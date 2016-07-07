@@ -1,4 +1,4 @@
-package cephbrokerhttp
+package handlers
 
 import (
 	"net/http"
@@ -7,16 +7,15 @@ import (
 
 	"fmt"
 
-	"github.com/cloudfoundry-incubator/cephbroker"
-	"github.com/cloudfoundry-incubator/cephbroker/cephbrokerlocal"
-	"github.com/cloudfoundry-incubator/cephbroker/model"
-	"github.com/cloudfoundry-incubator/cephbroker/utils"
 	cf_http_handlers "code.cloudfoundry.org/cfhttp/handlers"
 	"code.cloudfoundry.org/lager"
+	"github.com/cloudfoundry-incubator/localbroker/model"
+	"github.com/cloudfoundry-incubator/localbroker/service"
+	"github.com/cloudfoundry-incubator/localbroker/utils"
 	"github.com/tedsuo/rata"
 )
 
-func NewHandler(logger lager.Logger, controller cephbrokerlocal.Controller) (http.Handler, error) {
+func NewHandler(logger lager.Logger, controller service.Controller) (http.Handler, error) {
 	logger = logger.Session("server")
 	logger.Info("start")
 	defer logger.Info("end")
@@ -29,10 +28,10 @@ func NewHandler(logger lager.Logger, controller cephbrokerlocal.Controller) (htt
 		"unbind":  newUnBindServiceInstanceHandler(logger, controller),
 	}
 
-	return rata.NewRouter(cephbroker.Routes, handlers)
+	return rata.NewRouter(localbroker.Routes, handlers)
 }
 
-func newCatalogHandler(logger lager.Logger, controller cephbrokerlocal.Controller) http.HandlerFunc {
+func newCatalogHandler(logger lager.Logger, controller service.Controller) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
 		logger := logger.Session("catalog")
 		logger.Info("start")
@@ -48,7 +47,7 @@ func newCatalogHandler(logger lager.Logger, controller cephbrokerlocal.Controlle
 
 	}
 }
-func newCreateServiceInstanceHandler(logger lager.Logger, controller cephbrokerlocal.Controller) http.HandlerFunc {
+func newCreateServiceInstanceHandler(logger lager.Logger, controller service.Controller) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
 		logger := logger.Session("create")
 		logger.Info("start")
@@ -84,7 +83,7 @@ func newCreateServiceInstanceHandler(logger lager.Logger, controller cephbrokerl
 		cf_http_handlers.WriteJSONResponse(w, 201, createResponse)
 	}
 }
-func newDeleteServiceInstanceHandler(logger lager.Logger, controller cephbrokerlocal.Controller) http.HandlerFunc {
+func newDeleteServiceInstanceHandler(logger lager.Logger, controller service.Controller) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
 		logger := logger.Session("delete")
 		logger.Info("start")
@@ -103,7 +102,7 @@ func newDeleteServiceInstanceHandler(logger lager.Logger, controller cephbrokerl
 		cf_http_handlers.WriteJSONResponse(w, 200, struct{}{})
 	}
 }
-func newBindServiceInstanceHandler(logger lager.Logger, controller cephbrokerlocal.Controller) http.HandlerFunc {
+func newBindServiceInstanceHandler(logger lager.Logger, controller service.Controller) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
 		logger := logger.Session("bind")
 		logger.Info("start")
@@ -144,7 +143,7 @@ func newBindServiceInstanceHandler(logger lager.Logger, controller cephbrokerloc
 	}
 }
 
-func newUnBindServiceInstanceHandler(logger lager.Logger, controller cephbrokerlocal.Controller) http.HandlerFunc {
+func newUnBindServiceInstanceHandler(logger lager.Logger, controller service.Controller) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
 		logger := logger.Session("unbind")
 		logger.Info("start")

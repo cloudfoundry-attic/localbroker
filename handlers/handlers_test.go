@@ -1,4 +1,4 @@
-package cephbrokerhttp_test
+package handlers_test
 
 import (
 	"bytes"
@@ -8,16 +8,16 @@ import (
 	"net/http"
 	"net/http/httptest"
 
-	"github.com/cloudfoundry-incubator/cephbroker/cephbrokerhttp"
-	"github.com/cloudfoundry-incubator/cephbroker/cephbrokerlocal/cephfakes"
-	"github.com/cloudfoundry-incubator/cephbroker/model"
-	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
 	"code.cloudfoundry.org/lager"
 	"code.cloudfoundry.org/lager/lagertest"
+	"github.com/cloudfoundry-incubator/localbroker/handlers"
+	"github.com/cloudfoundry-incubator/localbroker/model"
+	"github.com/cloudfoundry-incubator/localbroker/service/cephfakes"
+	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/gomega"
 )
 
-var _ = Describe("Cephbroker Handlers", func() {
+var _ = Describe("localbroker Handlers", func() {
 
 	Context("when generating handlers", func() {
 		var (
@@ -28,7 +28,7 @@ var _ = Describe("Cephbroker Handlers", func() {
 		BeforeEach(func() {
 			testLogger = lagertest.NewTestLogger("HandlersTest")
 			fakeController = new(cephfakes.FakeController)
-			handler, _ = cephbrokerhttp.NewHandler(testLogger, fakeController)
+			handler, _ = handlers.NewHandler(testLogger, fakeController)
 		})
 		Context(".Catalog", func() {
 			It("should produce valid catalog response", func() {

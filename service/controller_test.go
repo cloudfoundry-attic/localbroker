@@ -1,49 +1,40 @@
-package cephbrokerlocal_test
+package service_test
 
 import (
 	"bytes"
 	"fmt"
 	"path"
 
-	. "github.com/cloudfoundry-incubator/cephbroker/cephbrokerlocal"
-	"github.com/cloudfoundry-incubator/cephbroker/cephbrokerlocal/cephfakes"
-	"github.com/cloudfoundry-incubator/cephbroker/model"
-	"github.com/cloudfoundry/gunk/os_wrap/exec_wrap/execfakes"
 	"code.cloudfoundry.org/lager"
 	"code.cloudfoundry.org/lager/lagertest"
+	"github.com/cloudfoundry-incubator/localbroker/model"
+	. "github.com/cloudfoundry-incubator/localbroker/service"
+	"github.com/cloudfoundry/gunk/os_wrap/exec_wrap/execfakes"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
 
-var _ = Describe("Cephbrokerlocal", func() {
+var _ = Describe("localbroker service", func() {
 	var (
-		testLogger      lager.Logger
-		cephClient      Client
-		controller      Controller
-		fakeInvoker     *cephfakes.FakeInvoker
-		fakeSystemUtil  *cephfakes.FakeSystemUtil
-		localMountPoint string
-		serviceGuid     string
-		instanceMap     map[string]*model.ServiceInstance
-		bindingMap      map[string]*model.ServiceBinding
-		planId          string
-		planName        string
-		planDesc        string
+		testLogger  lager.Logger
+		controller  Controller
+		serviceGuid string
+		instanceMap map[string]*model.ServiceInstance
+		bindingMap  map[string]*model.ServiceBinding
+		planId      string
+		planName    string
+		planDesc    string
 	)
 	BeforeEach(func() {
 		planName = "free"
 		planId = "free-plan-guid"
 		planDesc = "free ceph filesystem"
 		testLogger = lagertest.NewTestLogger("ControllerTest")
-		fakeInvoker = new(cephfakes.FakeInvoker)
 		serviceGuid = "some-service-guid"
-		fakeSystemUtil = new(cephfakes.FakeSystemUtil)
-		localMountPoint = "/tmp/share"
-		cephClient = NewCephClientWithInvokerAndSystemUtil("some-mds-url:9999", fakeInvoker, fakeSystemUtil, localMountPoint, "/some-keyring-file")
 		instanceMap = make(map[string]*model.ServiceInstance)
 		bindingMap = make(map[string]*model.ServiceBinding)
-		controller = NewController(cephClient, "service-name", "service-id", planId, planName, planDesc, "/tmp/cephbroker", instanceMap, bindingMap)
+		controller = NewController("service-name", "service-id", planId, planName, planDesc, "/tmp/cephbroker", instanceMap, bindingMap)
 
 	})
 	Context(".Catalog", func() {
@@ -70,54 +61,7 @@ var _ = Describe("Cephbrokerlocal", func() {
 			Expect(catalog.Services[0].PlanUpdateable).To(Equal(false))
 		})
 	})
-	Context(".CreateServiceInstance", func() {
-		var (
-			instance model.ServiceInstance
-		)
-		BeforeEach(func() {
-			instance = model.ServiceInstance{}
-			instance.PlanId = "some-planId"
-			instance.Parameters = map[string]interface{}{"some-property": "some-value"}
 
-		})
-		It("should create a valid service instance", func() {
-			successfullServiceInstanceCreate(testLogger, fakeSystemUtil, instance, controller, serviceGuid)
-		})
-		Context("should fail to create service instance", func() {
-			It("when base filesystem directory creation errors", func() {
-				fakeSystemUtil.MkdirAllReturns(fmt.Errorf("failed to create directory"))
-
-				_, err := controller.CreateServiceInstance(testLogger, "service-instance-guid", instance)
-				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(Equal(fmt.Sprintf("failed to create local directory '%s', mount filesystem failed", localMountPoint)))
-			})
-			It("when filesystem mount fails", func() {
-				fakeInvoker.InvokeReturns(fmt.Errorf("failed to mount filesystem"))
-				_, err := controller.CreateServiceInstance(testLogger, "service-instance-guid", instance)
-				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(Equal("failed to mount filesystem"))
-			})
-			It("when share creation errors", func() {
-				properties := map[string]interface{}{"some-property": "some-value"}
-				instance.Parameters = properties
-				// to ensure filesystem is mounted(on first creation)
-				_, err := controller.CreateServiceInstance(testLogger, "service-instance-guid", instance)
-				Expect(err).ToNot(HaveOccurred())
-
-				fakeSystemUtil.MkdirAllReturns(fmt.Errorf("failed to create directory"))
-				_, err = controller.CreateServiceInstance(testLogger, "service-instance-guid", instance)
-				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(Equal(fmt.Sprintf("failed to create share '%s'", path.Join(localMountPoint, "service-instance-guid"))))
-			})
-			It("should error when updating internal bookkeeping fails", func() {
-				controller = NewController(cephClient, "service-name", "service-id", planId, planName, planDesc, "/non-existent-path", instanceMap, bindingMap)
-				_, err := controller.CreateServiceInstance(testLogger, "service-instance-guid", instance)
-				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(Equal(fmt.Sprintf("open /non-existent-path/service_instances.json: no such file or directory")))
-			})
-
-		})
-	})
 	Context(".ServiceInstanceExists", func() {
 		var (
 			instance model.ServiceInstance
@@ -371,19 +315,3 @@ var _ = Describe("RealInvoker", func() {
 		})
 	})
 })
-
-func successfullServiceInstanceCreate(testLogger lager.Logger, fakeSystemUtil *cephfakes.FakeSystemUtil, instance model.ServiceInstance, controller Controller, serviceGuid string) {
-	fakeSystemUtil.MkdirAllReturns(nil)
-	createResponse, err := controller.CreateServiceInstance(testLogger, serviceGuid, instance)
-	Expect(err).ToNot(HaveOccurred())
-	Expect(createResponse.DashboardUrl).ToNot(Equal(""))
-	Expect(fakeSystemUtil.MkdirAllCallCount()).To(Equal(2))
-}
-
-func successfullServiceBindingCreate(testLogger lager.Logger, fakeSystemUtil *cephfakes.FakeSystemUtil, binding model.ServiceBinding, controller Controller, serviceGuid string, bindingId string) {
-	fakeSystemUtil.ExistsReturns(true)
-	bindResponse, err := controller.BindServiceInstance(testLogger, serviceGuid, bindingId, binding)
-	Expect(err).ToNot(HaveOccurred())
-	Expect(bindResponse.VolumeMounts).ToNot(BeNil())
-	Expect(len(bindResponse.VolumeMounts)).To(Equal(1))
-}

@@ -1,4 +1,4 @@
-package cephbrokerhttp_test
+package handlers_test
 
 import (
 	"testing"
@@ -9,5 +9,5 @@ import (
 
 func TestHandlers(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "Ceph broker Handlers Suite")
+	RunSpecs(t, "local broker Handlers Suite")
 }
