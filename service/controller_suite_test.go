@@ -10,9 +10,9 @@ import (
 	"testing"
 )
 
-func TestCephbrokerlocal(t *testing.T) {
+func TestService(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "Cephbrokerlocal Suite")
+	RunSpecs(t, "Localbroker Service Suite")
 }
 
 type errCloser struct{ io.Reader }

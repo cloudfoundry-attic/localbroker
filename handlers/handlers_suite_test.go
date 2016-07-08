@@ -9,5 +9,5 @@ import (
 
 func TestHandlers(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "local broker Handlers Suite")
+	RunSpecs(t, "Broker Handlers Suite")
 }
