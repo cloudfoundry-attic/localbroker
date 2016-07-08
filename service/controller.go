@@ -27,7 +27,7 @@ type Controller interface {
 	UnbindServiceInstance(logger lager.Logger, serviceInstanceId string, bindingId string) error
 }
 
-type cephController struct {
+type brokerController struct {
 	instanceMap map[string]*model.ServiceInstance
 	bindingMap  map[string]*model.ServiceBinding
 	configPath  string
@@ -39,7 +39,7 @@ type cephController struct {
 }
 
 func NewController(serviceName, serviceId, planId, planName, planDesc, configPath string, instanceMap map[string]*model.ServiceInstance, bindingMap map[string]*model.ServiceBinding) Controller {
-	return &cephController{
+	return &brokerController{
 		serviceName: serviceName,
 		serviceId:   serviceId,
 		planId:      planId,
@@ -51,7 +51,7 @@ func NewController(serviceName, serviceId, planId, planName, planDesc, configPat
 	}
 }
 
-func (c *cephController) GetCatalog(logger lager.Logger) (model.Catalog, error) {
+func (c *brokerController) GetCatalog(logger lager.Logger) (model.Catalog, error) {
 	logger = logger.Session("get-catalog")
 	logger.Info("start")
 	defer logger.Info("end")
@@ -81,7 +81,7 @@ func (c *cephController) GetCatalog(logger lager.Logger) (model.Catalog, error) 
 	return catalog, nil
 }
 
-func (c *cephController) CreateServiceInstance(logger lager.Logger, serviceInstanceId string, instance model.ServiceInstance) (model.CreateServiceInstanceResponse, error) {
+func (c *brokerController) CreateServiceInstance(logger lager.Logger, serviceInstanceId string, instance model.ServiceInstance) (model.CreateServiceInstanceResponse, error) {
 	logger = logger.Session("create-service-instance")
 	logger.Info("start")
 	defer logger.Info("end")
@@ -89,7 +89,7 @@ func (c *cephController) CreateServiceInstance(logger lager.Logger, serviceInsta
 	return model.CreateServiceInstanceResponse{}, errors.New("unimplemented")
 }
 
-func (c *cephController) ServiceInstanceExists(logger lager.Logger, serviceInstanceId string) bool {
+func (c *brokerController) ServiceInstanceExists(logger lager.Logger, serviceInstanceId string) bool {
 	logger = logger.Session("service-instance-exists")
 	logger.Info("start")
 	defer logger.Info("end")
@@ -97,7 +97,7 @@ func (c *cephController) ServiceInstanceExists(logger lager.Logger, serviceInsta
 	return false
 }
 
-func (c *cephController) ServiceInstancePropertiesMatch(logger lager.Logger, serviceInstanceId string, instance model.ServiceInstance) bool {
+func (c *brokerController) ServiceInstancePropertiesMatch(logger lager.Logger, serviceInstanceId string, instance model.ServiceInstance) bool {
 	logger = logger.Session("service-instance-properties-match")
 	logger.Info("start")
 	defer logger.Info("end")
@@ -105,14 +105,14 @@ func (c *cephController) ServiceInstancePropertiesMatch(logger lager.Logger, ser
 	return false
 }
 
-func (c *cephController) DeleteServiceInstance(logger lager.Logger, serviceInstanceId string) error {
+func (c *brokerController) DeleteServiceInstance(logger lager.Logger, serviceInstanceId string) error {
 	logger = logger.Session("delete-service-instance")
 	logger.Info("start")
 	defer logger.Info("end")
 
 	return errors.New("unimplemented")
 }
-func (c *cephController) BindServiceInstance(logger lager.Logger, serviceInstanceId string, bindingId string, bindingInfo model.ServiceBinding) (model.CreateServiceBindingResponse, error) {
+func (c *brokerController) BindServiceInstance(logger lager.Logger, serviceInstanceId string, bindingId string, bindingInfo model.ServiceBinding) (model.CreateServiceBindingResponse, error) {
 	logger = logger.Session("bind-service-instance")
 	logger.Info("start")
 	defer logger.Info("end")
@@ -120,7 +120,7 @@ func (c *cephController) BindServiceInstance(logger lager.Logger, serviceInstanc
 	return model.CreateServiceBindingResponse{}, errors.New("unimplemented")
 }
 
-func (c *cephController) ServiceBindingExists(logger lager.Logger, serviceInstanceId string, bindingId string) bool {
+func (c *brokerController) ServiceBindingExists(logger lager.Logger, serviceInstanceId string, bindingId string) bool {
 	logger = logger.Session("service-binding-exists")
 	logger.Info("start")
 	defer logger.Info("end")
@@ -128,7 +128,7 @@ func (c *cephController) ServiceBindingExists(logger lager.Logger, serviceInstan
 	return false
 }
 
-func (c *cephController) ServiceBindingPropertiesMatch(logger lager.Logger, serviceInstanceId string, bindingId string, binding model.ServiceBinding) bool {
+func (c *brokerController) ServiceBindingPropertiesMatch(logger lager.Logger, serviceInstanceId string, bindingId string, binding model.ServiceBinding) bool {
 	logger = logger.Session("service-binding-properties-match")
 	logger.Info("start")
 	defer logger.Info("end")
@@ -136,7 +136,7 @@ func (c *cephController) ServiceBindingPropertiesMatch(logger lager.Logger, serv
 	return false
 }
 
-func (c *cephController) UnbindServiceInstance(logger lager.Logger, serviceInstanceId string, bindingId string) error {
+func (c *brokerController) UnbindServiceInstance(logger lager.Logger, serviceInstanceId string, bindingId string) error {
 	logger = logger.Session("unbind")
 	logger.Info("start")
 	defer logger.Info("end")
@@ -144,7 +144,7 @@ func (c *cephController) UnbindServiceInstance(logger lager.Logger, serviceInsta
 	return errors.New("unimplemented")
 }
 
-func (c *cephController) GetBinding(logger lager.Logger, instanceId, bindingId string) (model.ServiceBinding, error) {
+func (c *brokerController) GetBinding(logger lager.Logger, instanceId, bindingId string) (model.ServiceBinding, error) {
 	logger = logger.Session("get-binding")
 	logger.Info("start")
 	defer logger.Info("end")

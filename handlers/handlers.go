@@ -9,6 +9,7 @@ import (
 
 	cf_http_handlers "code.cloudfoundry.org/cfhttp/handlers"
 	"code.cloudfoundry.org/lager"
+	"github.com/cloudfoundry-incubator/localbroker"
 	"github.com/cloudfoundry-incubator/localbroker/model"
 	"github.com/cloudfoundry-incubator/localbroker/service"
 	"github.com/cloudfoundry-incubator/localbroker/utils"
@@ -56,7 +57,7 @@ func newCreateServiceInstanceHandler(logger lager.Logger, controller service.Con
 		var instance model.ServiceInstance
 		err := utils.UnmarshallDataFromRequest(req, &instance)
 		if err != nil {
-			cf_http_handlers.WriteJSONResponse(w, 409, struct{}{})
+			cf_http_handlers.WriteJSONResponse(w, 400, struct{}{})
 			return
 		}
 		serviceInstanceExists := controller.ServiceInstanceExists(logger, instanceId)
@@ -77,7 +78,7 @@ func newCreateServiceInstanceHandler(logger lager.Logger, controller service.Con
 		createResponse, err := controller.CreateServiceInstance(logger, instanceId, instance)
 		if err != nil {
 			logger.Error("failed-to-create-instance", err, lager.Data{"instance": instance})
-			cf_http_handlers.WriteJSONResponse(w, 409, struct{}{})
+			cf_http_handlers.WriteJSONResponse(w, 500, struct{}{})
 			return
 		}
 		cf_http_handlers.WriteJSONResponse(w, 201, createResponse)
@@ -96,7 +97,7 @@ func newDeleteServiceInstanceHandler(logger lager.Logger, controller service.Con
 		}
 		err := controller.DeleteServiceInstance(logger, instanceId)
 		if err != nil {
-			cf_http_handlers.WriteJSONResponse(w, 409, struct{}{})
+			cf_http_handlers.WriteJSONResponse(w, 500, struct{}{})
 			return
 		}
 		cf_http_handlers.WriteJSONResponse(w, 200, struct{}{})
@@ -113,7 +114,7 @@ func newBindServiceInstanceHandler(logger lager.Logger, controller service.Contr
 		var binding model.ServiceBinding
 		err := utils.UnmarshallDataFromRequest(req, &binding)
 		if err != nil {
-			cf_http_handlers.WriteJSONResponse(w, 409, struct{}{})
+			cf_http_handlers.WriteJSONResponse(w, 400, struct{}{})
 			return
 		}
 		serviceBindingExists := controller.ServiceBindingExists(logger, instanceId, bindingId)
@@ -122,7 +123,7 @@ func newBindServiceInstanceHandler(logger lager.Logger, controller service.Contr
 				response, err := controller.GetBinding(logger, instanceId, bindingId)
 				if err != nil {
 					logger.Error("failed-to-get-binding", err, lager.Data{"instance-id": instanceId, "binding-id": bindingId, "binding": binding})
-					cf_http_handlers.WriteJSONResponse(w, 409, struct{}{})
+					cf_http_handlers.WriteJSONResponse(w, 500, struct{}{})
 					return
 				}
 				cf_http_handlers.WriteJSONResponse(w, 200, response)
@@ -136,7 +137,7 @@ func newBindServiceInstanceHandler(logger lager.Logger, controller service.Contr
 		bindResponse, err := controller.BindServiceInstance(logger, instanceId, bindingId, binding)
 		if err != nil {
 			logger.Error("failed-to-bind-instance", err, lager.Data{"instance-id": instanceId, "binding-id": bindingId, "binding": binding})
-			cf_http_handlers.WriteJSONResponse(w, 409, struct{}{})
+			cf_http_handlers.WriteJSONResponse(w, 500, struct{}{})
 			return
 		}
 		cf_http_handlers.WriteJSONResponse(w, 201, bindResponse)
@@ -154,7 +155,7 @@ func newUnBindServiceInstanceHandler(logger lager.Logger, controller service.Con
 		var binding model.ServiceBinding
 		err := utils.UnmarshallDataFromRequest(req, &binding)
 		if err != nil {
-			cf_http_handlers.WriteJSONResponse(w, 410, struct{}{})
+			cf_http_handlers.WriteJSONResponse(w, 400, struct{}{})
 			return
 		}
 		serviceBindingExists := controller.ServiceBindingExists(logger, instanceId, bindingId)
@@ -164,7 +165,7 @@ func newUnBindServiceInstanceHandler(logger lager.Logger, controller service.Con
 		}
 		err = controller.UnbindServiceInstance(logger, instanceId, bindingId)
 		if err != nil {
-			cf_http_handlers.WriteJSONResponse(w, 410, err)
+			cf_http_handlers.WriteJSONResponse(w, 500, err)
 			return
 		}
 		cf_http_handlers.WriteJSONResponse(w, 200, struct{}{})
