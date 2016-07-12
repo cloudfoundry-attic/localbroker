@@ -1,7 +1,11 @@
 package localbroker
 
 import (
+	"errors"
+	"reflect"
+
 	"code.cloudfoundry.org/lager"
+	"github.com/cloudfoundry-incubator/voldriver"
 	"github.com/pivotal-cf/brokerapi"
 )
 
@@ -16,15 +20,15 @@ type broker struct {
 	planId   string
 	planDesc string
 
-	// instanceMap map[string]*model.ServiceInstance
+	provisioner voldriver.Provisioner
+
+	instanceMap map[string]brokerapi.ProvisionDetails
 	// bindingMap  map[string]*model.ServiceBinding
 }
 
 func New(
-	logger lager.Logger,
+	logger lager.Logger, provisioner voldriver.Provisioner,
 	serviceName, serviceId, planName, planId, planDesc string,
-	// instanceMap map[string]*model.ServiceInstance,
-	// bindingMap map[string]*model.ServiceBinding,
 ) *broker {
 	return &broker{
 		logger:      logger,
@@ -33,13 +37,14 @@ func New(
 		planName:    planName,
 		planId:      planId,
 		planDesc:    planDesc,
-		// instanceMap: instanceMap,
+		provisioner: provisioner,
+		instanceMap: map[string]brokerapi.ProvisionDetails{},
 		// bindingMap:  bindingMap,
 	}
 }
 
 func (b *broker) Services() []brokerapi.Service {
-	logger := b.logger.Session("get-catalog")
+	logger := b.logger.Session("services")
 	logger.Info("start")
 	defer logger.Info("end")
 
@@ -61,11 +66,62 @@ func (b *broker) Services() []brokerapi.Service {
 }
 
 func (b *broker) Provision(instanceID string, details brokerapi.ProvisionDetails, asyncAllowed bool) (brokerapi.ProvisionedServiceSpec, error) {
-	panic("not implemented")
+	logger := b.logger.Session("provision")
+	logger.Info("start")
+	defer logger.Info("end")
+
+	if b.instanceConflicts(details, instanceID) {
+		logger.Error("instance-already-exists", brokerapi.ErrInstanceAlreadyExists)
+		return brokerapi.ProvisionedServiceSpec{}, brokerapi.ErrInstanceAlreadyExists
+	}
+
+	errResp := b.provisioner.Create(b.logger, voldriver.CreateRequest{
+		Name: instanceID,
+		Opts: map[string]interface{}{"volume_id": instanceID},
+	})
+
+	if errResp.Err != "" {
+		err := errors.New(errResp.Err)
+		logger.Error("provisioner-create-failed", err)
+		return brokerapi.ProvisionedServiceSpec{}, err
+	}
+
+	b.instanceMap[instanceID] = details
+
+	return brokerapi.ProvisionedServiceSpec{}, nil
+}
+
+func (b *broker) instanceConflicts(details brokerapi.ProvisionDetails, instanceID string) bool {
+	if existing, ok := b.instanceMap[instanceID]; ok {
+		if !reflect.DeepEqual(details, existing) {
+			return true
+		}
+	}
+	return false
 }
 
 func (b *broker) Deprovision(instanceID string, details brokerapi.DeprovisionDetails, asyncAllowed bool) (brokerapi.DeprovisionServiceSpec, error) {
-	panic("not implemented")
+	logger := b.logger.Session("deprovision")
+	logger.Info("start")
+	defer logger.Info("end")
+
+	if _, ok := b.instanceMap[instanceID]; !ok {
+		return brokerapi.DeprovisionServiceSpec{}, brokerapi.ErrInstanceDoesNotExist
+	}
+
+	errResp := b.provisioner.Remove(b.logger, voldriver.RemoveRequest{
+		Name: instanceID,
+	})
+
+	if errResp.Err != "" {
+		err := errors.New(errResp.Err)
+		logger.Error("provisioner-remove-failed", err)
+		return brokerapi.DeprovisionServiceSpec{}, err
+	}
+
+	delete(b.instanceMap, instanceID)
+
+	return brokerapi.DeprovisionServiceSpec{}, nil
 }
 
 func (b *broker) Bind(instanceID string, bindingID string, details brokerapi.BindDetails) (brokerapi.Binding, error) {

@@ -9,6 +9,7 @@ import (
 	"code.cloudfoundry.org/lager"
 	"github.com/cloudfoundry-incubator/localbroker/localbroker"
 	"github.com/cloudfoundry-incubator/localbroker/utils"
+	"github.com/cloudfoundry-incubator/voldriver/driverhttp"
 	"github.com/pivotal-cf/brokerapi"
 	"github.com/tedsuo/ifrit"
 	"github.com/tedsuo/ifrit/grouper"
@@ -55,6 +56,11 @@ var password = flag.String(
 	"admin",
 	"basic auth password to verify on incoming requests",
 )
+var localdriverURL = flag.String(
+	"localdriverURL",
+	"http://127.0.0.1:8089",
+	"address of the companion localdriver service",
+)
 
 func main() {
 	parseCommandLine()
@@ -84,10 +90,13 @@ func parseCommandLine() {
 }
 
 func createServer(logger lager.Logger) ifrit.Runner {
-	serviceBroker := localbroker.New(logger, *serviceName, *serviceId, *planName, *planId, *planDesc)
+	provisioner, err := driverhttp.NewRemoteClient(*localdriverURL, nil)
+	utils.ExitOnFailure(logger, err)
+
+	serviceBroker := localbroker.New(logger, provisioner, *serviceName, *serviceId, *planName, *planId, *planDesc)
 
 	credentials := brokerapi.BrokerCredentials{Username: *username, Password: *password}
-	handler := brokerapi.New(serviceBroker, logger, credentials)
+	handler := brokerapi.New(serviceBroker, logger.Session("broker-api"), credentials)
 
 	return http_server.New(*atAddress, handler)
 }
