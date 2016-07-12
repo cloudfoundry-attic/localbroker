@@ -7,9 +7,9 @@ import (
 	"code.cloudfoundry.org/debugserver"
 
 	"code.cloudfoundry.org/lager"
-	"github.com/cloudfoundry-incubator/localbroker/handlers"
-	"github.com/cloudfoundry-incubator/localbroker/service"
+	"github.com/cloudfoundry-incubator/localbroker/localbroker"
 	"github.com/cloudfoundry-incubator/localbroker/utils"
+	"github.com/pivotal-cf/brokerapi"
 	"github.com/tedsuo/ifrit"
 	"github.com/tedsuo/ifrit/grouper"
 	"github.com/tedsuo/ifrit/http_server"
@@ -19,11 +19,6 @@ var atAddress = flag.String(
 	"listenAddr",
 	"0.0.0.0:8999",
 	"host:port to serve service broker API",
-)
-var configPath = flag.String(
-	"configPath",
-	"/tmp/localbroker",
-	"config directory to store book-keeping info",
 )
 var serviceName = flag.String(
 	"serviceName",
@@ -50,22 +45,34 @@ var planDesc = flag.String(
 	"free local filesystem",
 	"description of the service plan to register with cloud controller",
 )
+var username = flag.String(
+	"username",
+	"admin",
+	"basic auth username to verify on incoming requests",
+)
+var password = flag.String(
+	"password",
+	"admin",
+	"basic auth password to verify on incoming requests",
+)
 
 func main() {
 	parseCommandLine()
+
 	logger, logSink := cflager.New("localbroker")
+	logger.Info("starting")
 	defer logger.Info("ends")
 
-	servers, err := createServer(logger)
-	utils.ExitOnFailure(logger, err)
+	server := createServer(logger)
 
 	if dbgAddr := debugserver.DebugAddress(flag.CommandLine); dbgAddr != "" {
-		servers = append(grouper.Members{
+		server = utils.ProcessRunnerFor(grouper.Members{
 			{"debug-server", debugserver.Runner(dbgAddr, logSink)},
-		}, servers...)
+			{"broker-api", server},
+		})
 	}
 
-	process := ifrit.Invoke(utils.ProcessRunnerFor(servers))
+	process := ifrit.Invoke(server)
 	logger.Info("started")
 	utils.UntilTerminated(logger, process)
 }
@@ -76,12 +83,11 @@ func parseCommandLine() {
 	flag.Parse()
 }
 
-func createServer(logger lager.Logger) (grouper.Members, error) {
-	controller := service.NewController(*serviceName, *serviceId, *planId, *planName, *planDesc, *configPath, nil, nil)
-	handler, err := handlers.NewHandler(logger, controller)
-	utils.ExitOnFailure(logger, err)
+func createServer(logger lager.Logger) ifrit.Runner {
+	serviceBroker := localbroker.New(logger, *serviceName, *serviceId, *planName, *planId, *planDesc)
 
-	return grouper.Members{
-		{"http-server", http_server.New(*atAddress, handler)},
-	}, nil
+	credentials := brokerapi.BrokerCredentials{Username: *username, Password: *password}
+	handler := brokerapi.New(serviceBroker, logger, credentials)
+
+	return http_server.New(*atAddress, handler)
 }

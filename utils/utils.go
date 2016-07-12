@@ -1,9 +1,6 @@
 package utils
 
 import (
-	"encoding/json"
-	"io/ioutil"
-	"net/http"
 	"os"
 
 	"code.cloudfoundry.org/lager"
@@ -11,20 +8,6 @@ import (
 	"github.com/tedsuo/ifrit/grouper"
 	"github.com/tedsuo/ifrit/sigmon"
 )
-
-func UnmarshallDataFromRequest(r *http.Request, object interface{}) error {
-	body, err := ioutil.ReadAll(r.Body)
-	if err != nil {
-		return err
-	}
-
-	err = json.Unmarshal(body, object)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
 
 func ExitOnFailure(logger lager.Logger, err error) {
 	if err != nil {

@@ -1,34 +1,43 @@
 package main_test
 
 import (
+	"io"
 	"net/http"
 	"os/exec"
 	"strconv"
+
+	"encoding/json"
+	"io/ioutil"
 
 	"code.cloudfoundry.org/lager"
 	"code.cloudfoundry.org/lager/lagertest"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/pivotal-cf/brokerapi"
 	"github.com/tedsuo/ifrit"
 	"github.com/tedsuo/ifrit/ginkgomon"
-	"io/ioutil"
-	"encoding/json"
-	"github.com/cloudfoundry-incubator/localbroker/model"
 )
 
 var _ = Describe("Localbroker Main", func() {
 	var (
-		args       []string
-		listenAddr string
+		args               []string
+		listenAddr         string
+		username, password string
+
 		process    ifrit.Process
 		testLogger lager.Logger
 	)
 
 	BeforeEach(func() {
-		listenAddr = "0.0.0.0:" + strconv.Itoa(8999+GinkgoParallelNode())
-		args = append(args, "-listenAddr", listenAddr)
+		testLogger = lagertest.NewTestLogger("test-broker")
 
-		testLogger = lagertest.NewTestLogger("test")
+		listenAddr = "0.0.0.0:" + strconv.Itoa(8999+GinkgoParallelNode())
+		username = "admin"
+		password = "password"
+
+		args = append(args, "-listenAddr", listenAddr)
+		args = append(args, "-username", username)
+		args = append(args, "-password", password)
 	})
 
 	JustBeforeEach(func() {
@@ -44,8 +53,16 @@ var _ = Describe("Localbroker Main", func() {
 		ginkgomon.Kill(process)
 	})
 
+	httpDoWithAuth := func(method, endpoint string, body io.ReadCloser) (*http.Response, error) {
+		req, err := http.NewRequest(method, "http://"+listenAddr+endpoint, body)
+		Expect(err).NotTo(HaveOccurred())
+
+		req.SetBasicAuth(username, password)
+		return http.DefaultClient.Do(req)
+	}
+
 	It("should listen on the given address", func() {
-		resp, err := http.Get("http://" + listenAddr + "/v2/catalog")
+		resp, err := httpDoWithAuth("GET", "/v2/catalog", nil)
 		Expect(err).NotTo(HaveOccurred())
 
 		Expect(resp.StatusCode).To(Equal(200))
@@ -61,20 +78,20 @@ var _ = Describe("Localbroker Main", func() {
 		})
 
 		It("should pass arguments though to catalog", func() {
-			resp, err := http.Get("http://" + listenAddr + "/v2/catalog")
+			resp, err := httpDoWithAuth("GET", "/v2/catalog", nil)
 			Expect(err).NotTo(HaveOccurred())
-
 			Expect(resp.StatusCode).To(Equal(200))
+
 			bytes, err := ioutil.ReadAll(resp.Body)
 			Expect(err).NotTo(HaveOccurred())
 
-			var catalog model.Catalog
+			var catalog brokerapi.CatalogResponse
 			err = json.Unmarshal(bytes, &catalog)
 			Expect(err).NotTo(HaveOccurred())
 
 			Expect(catalog.Services[0].Name).To(Equal("something"))
-			Expect(catalog.Services[0].Id).To(Equal("someguid"))
-			Expect(catalog.Services[0].Plans[0].Id).To(Equal("some other guid"))
+			Expect(catalog.Services[0].ID).To(Equal("someguid"))
+			Expect(catalog.Services[0].Plans[0].ID).To(Equal("some other guid"))
 			Expect(catalog.Services[0].Plans[0].Name).To(Equal("some name"))
 			Expect(catalog.Services[0].Plans[0].Description).To(Equal("a description"))
 		})
