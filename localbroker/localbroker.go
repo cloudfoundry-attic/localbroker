@@ -23,7 +23,6 @@ type broker struct {
 	provisioner voldriver.Provisioner
 
 	instanceMap map[string]brokerapi.ProvisionDetails
-	// bindingMap  map[string]*model.ServiceBinding
 }
 
 func New(
@@ -39,7 +38,6 @@ func New(
 		planDesc:    planDesc,
 		provisioner: provisioner,
 		instanceMap: map[string]brokerapi.ProvisionDetails{},
-		// bindingMap:  bindingMap,
 	}
 }
 
@@ -75,7 +73,7 @@ func (b *broker) Provision(instanceID string, details brokerapi.ProvisionDetails
 		return brokerapi.ProvisionedServiceSpec{}, brokerapi.ErrInstanceAlreadyExists
 	}
 
-	errResp := b.provisioner.Create(b.logger, voldriver.CreateRequest{
+	errResp := b.provisioner.Create(logger, voldriver.CreateRequest{
 		Name: instanceID,
 		Opts: map[string]interface{}{"volume_id": instanceID},
 	})
@@ -109,7 +107,7 @@ func (b *broker) Deprovision(instanceID string, details brokerapi.DeprovisionDet
 		return brokerapi.DeprovisionServiceSpec{}, brokerapi.ErrInstanceDoesNotExist
 	}
 
-	errResp := b.provisioner.Remove(b.logger, voldriver.RemoveRequest{
+	errResp := b.provisioner.Remove(logger, voldriver.RemoveRequest{
 		Name: instanceID,
 	})
 
