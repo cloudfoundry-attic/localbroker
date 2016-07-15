@@ -4,12 +4,17 @@ import (
 	"errors"
 	"reflect"
 
+	"path"
+
 	"code.cloudfoundry.org/lager"
 	"github.com/cloudfoundry-incubator/voldriver"
 	"github.com/pivotal-cf/brokerapi"
 )
 
-const PermissionVolumeMount = brokerapi.RequiredPermission("volume_mount")
+const (
+	PermissionVolumeMount = brokerapi.RequiredPermission("volume_mount")
+	DefaultContainerPath  = "/var/vcap/data"
+)
 
 type broker struct {
 	logger      lager.Logger
@@ -23,6 +28,7 @@ type broker struct {
 	provisioner voldriver.Provisioner
 
 	instanceMap map[string]brokerapi.ProvisionDetails
+	bindingMap  map[string]brokerapi.BindDetails
 }
 
 func New(
@@ -38,6 +44,7 @@ func New(
 		planDesc:    planDesc,
 		provisioner: provisioner,
 		instanceMap: map[string]brokerapi.ProvisionDetails{},
+		bindingMap:  map[string]brokerapi.BindDetails{},
 	}
 }
 
@@ -123,11 +130,85 @@ func (b *broker) Deprovision(instanceID string, details brokerapi.DeprovisionDet
 }
 
 func (b *broker) Bind(instanceID string, bindingID string, details brokerapi.BindDetails) (brokerapi.Binding, error) {
-	panic("not implemented")
+	if _, ok := b.instanceMap[instanceID]; !ok {
+		return brokerapi.Binding{}, brokerapi.ErrInstanceDoesNotExist
+	}
+
+	if details.AppGUID == "" {
+		return brokerapi.Binding{}, brokerapi.ErrAppGuidNotProvided
+	}
+
+	mode, err := evaluateMode(details.Parameters)
+	if err != nil {
+		return brokerapi.Binding{}, err
+	}
+
+	if b.bindingConflicts(bindingID, details) {
+		return brokerapi.Binding{}, brokerapi.ErrBindingAlreadyExists
+	}
+
+	b.bindingMap[bindingID] = details
+
+	return brokerapi.Binding{
+		VolumeMounts: []brokerapi.VolumeMount{{
+			ContainerPath: evaluateContainerPath(details.Parameters, instanceID),
+			Mode:          mode,
+			Private: brokerapi.VolumeMountPrivate{
+				Driver:  "localdriver",
+				GroupId: instanceID,
+			},
+		}},
+	}, nil
+}
+
+func evaluateContainerPath(parameters map[string]interface{}, volId string) string {
+	if containerPath, ok := parameters["mount"]; ok && containerPath != "" {
+		return containerPath.(string)
+	}
+
+	return path.Join(DefaultContainerPath, volId)
+}
+
+func evaluateMode(parameters map[string]interface{}) (string, error) {
+	if ro, ok := parameters["readonly"]; ok {
+		switch ro := ro.(type) {
+		case bool:
+			return readOnlyToMode(ro), nil
+		default:
+			return "", brokerapi.ErrRawParamsInvalid
+		}
+	}
+	return "rw", nil
+}
+
+func readOnlyToMode(ro bool) string {
+	if ro {
+		return "r"
+	}
+	return "rw"
 }
 
 func (b *broker) Unbind(instanceID string, bindingID string, details brokerapi.UnbindDetails) error {
-	panic("not implemented")
+	if _, ok := b.instanceMap[instanceID]; !ok {
+		return brokerapi.ErrInstanceDoesNotExist
+	}
+
+	if _, ok := b.bindingMap[bindingID]; !ok {
+		return brokerapi.ErrBindingDoesNotExist
+	}
+
+	delete(b.bindingMap, bindingID)
+
+	return nil
+}
+
+func (b *broker) bindingConflicts(bindingID string, details brokerapi.BindDetails) bool {
+	if existing, ok := b.bindingMap[bindingID]; ok {
+		if !reflect.DeepEqual(details, existing) {
+			return true
+		}
+	}
+	return false
 }
 
 func (b *broker) Update(instanceID string, details brokerapi.UpdateDetails, asyncAllowed bool) (brokerapi.UpdateServiceSpec, error) {
