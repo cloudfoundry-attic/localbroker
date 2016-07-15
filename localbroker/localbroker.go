@@ -129,6 +129,16 @@ func (b *broker) Deprovision(instanceID string, details brokerapi.DeprovisionDet
 	return brokerapi.DeprovisionServiceSpec{}, nil
 }
 
+type Credentials struct {
+	URI      string `json:"uri"`
+	Hostname string `json:"hostname"`
+	Port     string `json:"port"`
+	Name     string `json:"name"`
+	VHost    string `json:"vhost"`
+	Username string `json:"username"`
+	Password string `json:"password"`
+}
+
 func (b *broker) Bind(instanceID string, bindingID string, details brokerapi.BindDetails) (brokerapi.Binding, error) {
 	if _, ok := b.instanceMap[instanceID]; !ok {
 		return brokerapi.Binding{}, brokerapi.ErrInstanceDoesNotExist
@@ -150,6 +160,7 @@ func (b *broker) Bind(instanceID string, bindingID string, details brokerapi.Bin
 	b.bindingMap[bindingID] = details
 
 	return brokerapi.Binding{
+		Credentials: Credentials{},
 		VolumeMounts: []brokerapi.VolumeMount{{
 			ContainerPath: evaluateContainerPath(details.Parameters, instanceID),
 			Mode:          mode,
