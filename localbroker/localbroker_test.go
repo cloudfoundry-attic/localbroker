@@ -131,17 +131,11 @@ var _ = Describe("Broker", func() {
 			bindDetails = brokerapi.BindDetails{AppGUID: "guid", Parameters: map[string]interface{}{}}
 		})
 
-		It("includes default credentials to prevent CAPI crash", func() {
+		It("includes empty credentials to prevent CAPI crash", func() {
 			binding, err := broker.Bind("some-instance-id", "binding-id", bindDetails)
 			Expect(err).NotTo(HaveOccurred())
-			creds := binding.Credentials
-			switch creds := creds.(type) {
-			case localbroker.Credentials:
-				Expect(creds.URI).NotTo(BeNil())
-				break
-			default:
-				Fail("Credentials not included on bind response.")
-			}
+
+			Expect(binding.Credentials).NotTo(BeNil())
 		})
 
 		It("uses the instance id in the default container path", func() {
