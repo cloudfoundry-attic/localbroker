@@ -16,19 +16,24 @@ const (
 	DefaultContainerPath  = "/var/vcap/data"
 )
 
+type staticState struct {
+	ServiceName string `json:"ServiceName"`
+	ServiceId   string `json:"ServiceId"`
+	PlanName    string `json:"PlanName"`
+	PlanId      string `json:"PlanId"`
+	PlanDesc    string `json:"PlanDesc"`
+}
+
+type dynamicState struct {
+	InstanceMap map[string]brokerapi.ProvisionDetails
+	BindingMap  map[string]brokerapi.BindDetails
+}
+
 type broker struct {
 	logger      lager.Logger
-	serviceName string
-	serviceId   string
-
-	planName string
-	planId   string
-	planDesc string
-
 	provisioner voldriver.Provisioner
-
-	instanceMap map[string]brokerapi.ProvisionDetails
-	bindingMap  map[string]brokerapi.BindDetails
+	static      staticState
+	dynamic     dynamicState
 }
 
 func New(
@@ -37,14 +42,18 @@ func New(
 ) *broker {
 	return &broker{
 		logger:      logger,
-		serviceName: serviceName,
-		serviceId:   serviceId,
-		planName:    planName,
-		planId:      planId,
-		planDesc:    planDesc,
 		provisioner: provisioner,
-		instanceMap: map[string]brokerapi.ProvisionDetails{},
-		bindingMap:  map[string]brokerapi.BindDetails{},
+		static: staticState{
+			ServiceName: serviceName,
+			ServiceId:   serviceId,
+			PlanName:    planName,
+			PlanId:      planId,
+			PlanDesc:    planDesc,
+		},
+		dynamic: dynamicState{
+			InstanceMap: map[string]brokerapi.ProvisionDetails{},
+			BindingMap:  map[string]brokerapi.BindDetails{},
+		},
 	}
 }
 
@@ -54,8 +63,8 @@ func (b *broker) Services() []brokerapi.Service {
 	defer logger.Info("end")
 
 	return []brokerapi.Service{{
-		ID:            b.serviceId,
-		Name:          b.serviceName,
+		ID:            b.static.ServiceId,
+		Name:          b.static.ServiceName,
 		Description:   "Local service docs: https://github.com/cloudfoundry-incubator/local-volume-release/",
 		Bindable:      true,
 		PlanUpdatable: false,
@@ -63,9 +72,9 @@ func (b *broker) Services() []brokerapi.Service {
 		Requires:      []brokerapi.RequiredPermission{PermissionVolumeMount},
 
 		Plans: []brokerapi.ServicePlan{{
-			Name:        b.planName,
-			ID:          b.planId,
-			Description: b.planDesc,
+			Name:        b.static.PlanName,
+			ID:          b.static.PlanId,
+			Description: b.static.PlanDesc,
 		}},
 	}}
 }
@@ -91,13 +100,13 @@ func (b *broker) Provision(instanceID string, details brokerapi.ProvisionDetails
 		return brokerapi.ProvisionedServiceSpec{}, err
 	}
 
-	b.instanceMap[instanceID] = details
+	b.dynamic.InstanceMap[instanceID] = details
 
 	return brokerapi.ProvisionedServiceSpec{}, nil
 }
 
 func (b *broker) instanceConflicts(details brokerapi.ProvisionDetails, instanceID string) bool {
-	if existing, ok := b.instanceMap[instanceID]; ok {
+	if existing, ok := b.dynamic.InstanceMap[instanceID]; ok {
 		if !reflect.DeepEqual(details, existing) {
 			return true
 		}
@@ -110,7 +119,7 @@ func (b *broker) Deprovision(instanceID string, details brokerapi.DeprovisionDet
 	logger.Info("start")
 	defer logger.Info("end")
 
-	if _, ok := b.instanceMap[instanceID]; !ok {
+	if _, ok := b.dynamic.InstanceMap[instanceID]; !ok {
 		return brokerapi.DeprovisionServiceSpec{}, brokerapi.ErrInstanceDoesNotExist
 	}
 
@@ -124,13 +133,13 @@ func (b *broker) Deprovision(instanceID string, details brokerapi.DeprovisionDet
 		return brokerapi.DeprovisionServiceSpec{}, err
 	}
 
-	delete(b.instanceMap, instanceID)
+	delete(b.dynamic.InstanceMap, instanceID)
 
 	return brokerapi.DeprovisionServiceSpec{}, nil
 }
 
 func (b *broker) Bind(instanceID string, bindingID string, details brokerapi.BindDetails) (brokerapi.Binding, error) {
-	if _, ok := b.instanceMap[instanceID]; !ok {
+	if _, ok := b.dynamic.InstanceMap[instanceID]; !ok {
 		return brokerapi.Binding{}, brokerapi.ErrInstanceDoesNotExist
 	}
 
@@ -147,7 +156,7 @@ func (b *broker) Bind(instanceID string, bindingID string, details brokerapi.Bin
 		return brokerapi.Binding{}, brokerapi.ErrBindingAlreadyExists
 	}
 
-	b.bindingMap[bindingID] = details
+	b.dynamic.BindingMap[bindingID] = details
 
 	return brokerapi.Binding{
 		Credentials: struct{}{}, // if nil, cloud controller chokes on response
@@ -190,21 +199,21 @@ func readOnlyToMode(ro bool) string {
 }
 
 func (b *broker) Unbind(instanceID string, bindingID string, details brokerapi.UnbindDetails) error {
-	if _, ok := b.instanceMap[instanceID]; !ok {
+	if _, ok := b.dynamic.InstanceMap[instanceID]; !ok {
 		return brokerapi.ErrInstanceDoesNotExist
 	}
 
-	if _, ok := b.bindingMap[bindingID]; !ok {
+	if _, ok := b.dynamic.BindingMap[bindingID]; !ok {
 		return brokerapi.ErrBindingDoesNotExist
 	}
 
-	delete(b.bindingMap, bindingID)
+	delete(b.dynamic.BindingMap, bindingID)
 
 	return nil
 }
 
 func (b *broker) bindingConflicts(bindingID string, details brokerapi.BindDetails) bool {
-	if existing, ok := b.bindingMap[bindingID]; ok {
+	if existing, ok := b.dynamic.BindingMap[bindingID]; ok {
 		if !reflect.DeepEqual(details, existing) {
 			return true
 		}

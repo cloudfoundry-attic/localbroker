@@ -6,6 +6,10 @@ import (
 	"code.cloudfoundry.org/cflager"
 	"code.cloudfoundry.org/debugserver"
 
+	"fmt"
+
+	"os"
+
 	"code.cloudfoundry.org/lager"
 	"github.com/cloudfoundry-incubator/localbroker/localbroker"
 	"github.com/cloudfoundry-incubator/localbroker/utils"
@@ -14,6 +18,12 @@ import (
 	"github.com/tedsuo/ifrit"
 	"github.com/tedsuo/ifrit/grouper"
 	"github.com/tedsuo/ifrit/http_server"
+)
+
+var dataDir = flag.String(
+	"dataDir",
+	"",
+	"[REQUIRED] - Broker's state will be stored here to persist across reboots",
 )
 
 var atAddress = flag.String(
@@ -64,6 +74,12 @@ var localdriverURL = flag.String(
 
 func main() {
 	parseCommandLine()
+
+	if *dataDir == "" {
+		fmt.Fprintf(os.Stderr, "\nERROR: Reqired parameter dataDir not defined.\n\n")
+		flag.Usage()
+		os.Exit(1)
+	}
 
 	logger, logSink := cflager.New("localbroker")
 	logger.Info("starting")
