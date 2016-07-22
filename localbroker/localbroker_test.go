@@ -7,6 +7,7 @@ import (
 	"github.com/cloudfoundry-incubator/voldriver/voldriverfakes"
 	"github.com/pivotal-cf/brokerapi"
 
+	"github.com/cloudfoundry-incubator/localbroker/localbroker/localbrokerfakes"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
@@ -15,15 +16,18 @@ var _ = Describe("Broker", func() {
 	var (
 		broker          brokerapi.ServiceBroker
 		fakeProvisioner *voldriverfakes.FakeProvisioner
+		fakeFs          *localbrokerfakes.FakeFileSystem
 	)
 
 	BeforeEach(func() {
 		logger := lagertest.NewTestLogger("test-broker")
 		fakeProvisioner = &voldriverfakes.FakeProvisioner{}
+		fakeFs = &localbrokerfakes.FakeFileSystem{}
 		broker = localbroker.New(
 			logger, fakeProvisioner,
 			"service-name", "service-id",
-			"plan-name", "plan-id", "plan-desc",
+			"plan-name", "plan-id", "plan-desc", "/fake-dir",
+			fakeFs,
 		)
 	})
 

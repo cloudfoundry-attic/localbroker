@@ -32,17 +32,23 @@ type dynamicState struct {
 type broker struct {
 	logger      lager.Logger
 	provisioner voldriver.Provisioner
+	dataDir     string
+	fs          FileSystem
 	static      staticState
 	dynamic     dynamicState
 }
 
 func New(
 	logger lager.Logger, provisioner voldriver.Provisioner,
-	serviceName, serviceId, planName, planId, planDesc string,
+	serviceName, serviceId, planName, planId, planDesc, dataDir string,
+	fileSystem FileSystem,
 ) *broker {
+
 	return &broker{
 		logger:      logger,
 		provisioner: provisioner,
+		dataDir:     dataDir,
+		fs:          fileSystem,
 		static: staticState{
 			ServiceName: serviceName,
 			ServiceId:   serviceId,

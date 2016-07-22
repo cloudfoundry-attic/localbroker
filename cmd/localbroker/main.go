@@ -76,7 +76,7 @@ func main() {
 	parseCommandLine()
 
 	if *dataDir == "" {
-		fmt.Fprintf(os.Stderr, "\nERROR: Reqired parameter dataDir not defined.\n\n")
+		fmt.Fprint(os.Stderr, "\nERROR: Reqired parameter dataDir not defined.\n\n")
 		flag.Usage()
 		os.Exit(1)
 	}
@@ -108,8 +108,8 @@ func parseCommandLine() {
 func createServer(logger lager.Logger) ifrit.Runner {
 	provisioner, err := driverhttp.NewRemoteClient(*localdriverURL, nil)
 	utils.ExitOnFailure(logger, err)
-
-	serviceBroker := localbroker.New(logger, provisioner, *serviceName, *serviceId, *planName, *planId, *planDesc)
+	fileSystem := localbroker.NewRealFileSystem()
+	serviceBroker := localbroker.New(logger, provisioner, *serviceName, *serviceId, *planName, *planId, *planDesc, *dataDir, &fileSystem)
 
 	credentials := brokerapi.BrokerCredentials{Username: *username, Password: *password}
 	handler := brokerapi.New(serviceBroker, logger.Session("broker-api"), credentials)
