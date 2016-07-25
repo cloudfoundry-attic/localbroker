@@ -6,6 +6,16 @@ import (
 
 	"path"
 
+	"encoding/json"
+
+	"fmt"
+
+	"path/filepath"
+
+	"sync"
+
+	"os"
+
 	"code.cloudfoundry.org/lager"
 	"github.com/cloudfoundry-incubator/voldriver"
 	"github.com/pivotal-cf/brokerapi"
@@ -29,13 +39,20 @@ type dynamicState struct {
 	BindingMap  map[string]brokerapi.BindDetails
 }
 
+type lock interface {
+	Lock()
+	Unlock()
+}
+
 type broker struct {
 	logger      lager.Logger
 	provisioner voldriver.Provisioner
 	dataDir     string
 	fs          FileSystem
-	static      staticState
-	dynamic     dynamicState
+	mutex       lock
+
+	static  staticState
+	dynamic dynamicState
 }
 
 func New(
@@ -44,11 +61,12 @@ func New(
 	fileSystem FileSystem,
 ) *broker {
 
-	return &broker{
+	theBroker := broker{
 		logger:      logger,
 		provisioner: provisioner,
 		dataDir:     dataDir,
 		fs:          fileSystem,
+		mutex:       &sync.Mutex{},
 		static: staticState{
 			ServiceName: serviceName,
 			ServiceId:   serviceId,
@@ -61,6 +79,10 @@ func New(
 			BindingMap:  map[string]brokerapi.BindDetails{},
 		},
 	}
+
+	theBroker.restoreDynamicState()
+
+	return &theBroker
 }
 
 func (b *broker) Services() []brokerapi.Service {
@@ -90,6 +112,11 @@ func (b *broker) Provision(instanceID string, details brokerapi.ProvisionDetails
 	logger.Info("start")
 	defer logger.Info("end")
 
+	b.mutex.Lock()
+	defer b.mutex.Unlock()
+
+	defer b.serialize(b.dynamic)
+
 	if b.instanceConflicts(details, instanceID) {
 		logger.Error("instance-already-exists", brokerapi.ErrInstanceAlreadyExists)
 		return brokerapi.ProvisionedServiceSpec{}, brokerapi.ErrInstanceAlreadyExists
@@ -111,19 +138,15 @@ func (b *broker) Provision(instanceID string, details brokerapi.ProvisionDetails
 	return brokerapi.ProvisionedServiceSpec{}, nil
 }
 
-func (b *broker) instanceConflicts(details brokerapi.ProvisionDetails, instanceID string) bool {
-	if existing, ok := b.dynamic.InstanceMap[instanceID]; ok {
-		if !reflect.DeepEqual(details, existing) {
-			return true
-		}
-	}
-	return false
-}
-
 func (b *broker) Deprovision(instanceID string, details brokerapi.DeprovisionDetails, asyncAllowed bool) (brokerapi.DeprovisionServiceSpec, error) {
 	logger := b.logger.Session("deprovision")
 	logger.Info("start")
 	defer logger.Info("end")
+
+	b.mutex.Lock()
+	defer b.mutex.Unlock()
+
+	defer b.serialize(b.dynamic)
 
 	if _, ok := b.dynamic.InstanceMap[instanceID]; !ok {
 		return brokerapi.DeprovisionServiceSpec{}, brokerapi.ErrInstanceDoesNotExist
@@ -145,6 +168,15 @@ func (b *broker) Deprovision(instanceID string, details brokerapi.DeprovisionDet
 }
 
 func (b *broker) Bind(instanceID string, bindingID string, details brokerapi.BindDetails) (brokerapi.Binding, error) {
+	logger := b.logger.Session("bind")
+	logger.Info("start")
+	defer logger.Info("end")
+
+	b.mutex.Lock()
+	defer b.mutex.Unlock()
+
+	defer b.serialize(b.dynamic)
+
 	if _, ok := b.dynamic.InstanceMap[instanceID]; !ok {
 		return brokerapi.Binding{}, brokerapi.ErrInstanceDoesNotExist
 	}
@@ -177,6 +209,46 @@ func (b *broker) Bind(instanceID string, bindingID string, details brokerapi.Bin
 	}, nil
 }
 
+func (b *broker) Unbind(instanceID string, bindingID string, details brokerapi.UnbindDetails) error {
+	logger := b.logger.Session("unbind")
+	logger.Info("start")
+	defer logger.Info("end")
+
+	b.mutex.Lock()
+	defer b.mutex.Unlock()
+
+	defer b.serialize(b.dynamic)
+
+	if _, ok := b.dynamic.InstanceMap[instanceID]; !ok {
+		return brokerapi.ErrInstanceDoesNotExist
+	}
+
+	if _, ok := b.dynamic.BindingMap[bindingID]; !ok {
+		return brokerapi.ErrBindingDoesNotExist
+	}
+
+	delete(b.dynamic.BindingMap, bindingID)
+
+	return nil
+}
+
+func (b *broker) Update(instanceID string, details brokerapi.UpdateDetails, asyncAllowed bool) (brokerapi.UpdateServiceSpec, error) {
+	panic("not implemented")
+}
+
+func (b *broker) LastOperation(instanceID string, operationData string) (brokerapi.LastOperation, error) {
+	panic("not implemented")
+}
+
+func (b *broker) instanceConflicts(details brokerapi.ProvisionDetails, instanceID string) bool {
+	if existing, ok := b.dynamic.InstanceMap[instanceID]; ok {
+		if !reflect.DeepEqual(details, existing) {
+			return true
+		}
+	}
+	return false
+}
+
 func evaluateContainerPath(parameters map[string]interface{}, volId string) string {
 	if containerPath, ok := parameters["mount"]; ok && containerPath != "" {
 		return containerPath.(string)
@@ -204,20 +276,6 @@ func readOnlyToMode(ro bool) string {
 	return "rw"
 }
 
-func (b *broker) Unbind(instanceID string, bindingID string, details brokerapi.UnbindDetails) error {
-	if _, ok := b.dynamic.InstanceMap[instanceID]; !ok {
-		return brokerapi.ErrInstanceDoesNotExist
-	}
-
-	if _, ok := b.dynamic.BindingMap[bindingID]; !ok {
-		return brokerapi.ErrBindingDoesNotExist
-	}
-
-	delete(b.dynamic.BindingMap, bindingID)
-
-	return nil
-}
-
 func (b *broker) bindingConflicts(bindingID string, details brokerapi.BindDetails) bool {
 	if existing, ok := b.dynamic.BindingMap[bindingID]; ok {
 		if !reflect.DeepEqual(details, existing) {
@@ -227,10 +285,47 @@ func (b *broker) bindingConflicts(bindingID string, details brokerapi.BindDetail
 	return false
 }
 
-func (b *broker) Update(instanceID string, details brokerapi.UpdateDetails, asyncAllowed bool) (brokerapi.UpdateServiceSpec, error) {
-	panic("not implemented")
+func (b *broker) serialize(state interface{}) {
+	logger := b.logger.Session("serialize-state")
+	logger.Info("start")
+	defer logger.Info("end")
+
+	stateFile := filepath.Join(b.dataDir, fmt.Sprintf("%s-services.json", b.static.ServiceName))
+
+	stateData, err := json.Marshal(state)
+	if err != nil {
+		b.logger.Error("failed-to-marshall-state", err)
+		return
+	}
+
+	err = b.fs.WriteFile(stateFile, stateData, os.ModePerm)
+	if err != nil {
+		b.logger.Error(fmt.Sprintf("failed-to-write-state-file: %s", stateFile), err)
+		return
+	}
+
+	logger.Info("state-saved", lager.Data{"state-file": stateFile})
 }
 
-func (b *broker) LastOperation(instanceID string, operationData string) (brokerapi.LastOperation, error) {
-	panic("not implemented")
+func (b *broker) restoreDynamicState() {
+	logger := b.logger.Session("restore-services")
+	logger.Info("start")
+	defer logger.Info("end")
+
+	stateFile := filepath.Join(b.dataDir, fmt.Sprintf("%s-services.json", b.static.ServiceName))
+
+	serviceData, err := b.fs.ReadFile(stateFile)
+	if err != nil {
+		b.logger.Error(fmt.Sprintf("failed-to-read-state-file: %s", stateFile), err)
+		return
+	}
+
+	dynamicState := dynamicState{}
+	err = json.Unmarshal(serviceData, &dynamicState)
+	if err != nil {
+		b.logger.Error(fmt.Sprintf("failed-to-unmarshall-state from state-file: %s", stateFile), err)
+		return
+	}
+	logger.Info("state-restored", lager.Data{"state-file": stateFile})
+	b.dynamic = dynamicState
 }

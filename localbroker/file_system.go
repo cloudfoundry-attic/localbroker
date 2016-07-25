@@ -1,6 +1,7 @@
 package localbroker
 
 import (
+	"io/ioutil"
 	"os"
 	"path/filepath"
 	"syscall"
@@ -16,6 +17,8 @@ type FileSystem interface {
 	RemoveAll(string) error
 	Remove(string) error
 	Symlink(oldname, newname string) error
+	ReadFile(filename string) ([]byte, error)
+	WriteFile(filename string, data []byte, perm os.FileMode) error
 
 	// filepath package
 	Abs(path string) (string, error)
@@ -25,6 +28,14 @@ type realFileSystem struct{}
 
 func NewRealFileSystem() realFileSystem {
 	return realFileSystem{}
+}
+
+func (f *realFileSystem) ReadFile(filename string) ([]byte, error) {
+	return ioutil.ReadFile(filename)
+}
+
+func (f *realFileSystem) WriteFile(filename string, data []byte, perm os.FileMode) error {
+	return ioutil.WriteFile(filename, data, perm)
 }
 
 func (f *realFileSystem) MkdirAll(path string, perm os.FileMode) error {

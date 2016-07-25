@@ -121,10 +121,10 @@ var _ = Describe("Localbroker Main", func() {
 			volmanRunner := failRunner{
 				Name:       "localbroker",
 				Command:    exec.Command(binaryPath, args...),
-				StartCheck: "ERROR: Reqired parameter dataDir not defined.",
+				StartCheck: "ERROR: Required parameter dataDir not defined.",
 			}
 			process := ifrit.Invoke(volmanRunner)
-			ginkgomon.Kill(process)
+			ginkgomon.Kill(process) // this is only if incorrect implementation leaves process running
 		})
 	})
 

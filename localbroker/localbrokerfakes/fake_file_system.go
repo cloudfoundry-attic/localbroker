@@ -58,6 +58,25 @@ type FakeFileSystem struct {
 	symlinkReturns struct {
 		result1 error
 	}
+	ReadFileStub        func(filename string) ([]byte, error)
+	readFileMutex       sync.RWMutex
+	readFileArgsForCall []struct {
+		filename string
+	}
+	readFileReturns struct {
+		result1 []byte
+		result2 error
+	}
+	WriteFileStub        func(filename string, data []byte, perm os.FileMode) error
+	writeFileMutex       sync.RWMutex
+	writeFileArgsForCall []struct {
+		filename string
+		data     []byte
+		perm     os.FileMode
+	}
+	writeFileReturns struct {
+		result1 error
+	}
 	AbsStub        func(path string) (string, error)
 	absMutex       sync.RWMutex
 	absArgsForCall []struct {
@@ -252,6 +271,73 @@ func (fake *FakeFileSystem) SymlinkArgsForCall(i int) (string, string) {
 func (fake *FakeFileSystem) SymlinkReturns(result1 error) {
 	fake.SymlinkStub = nil
 	fake.symlinkReturns = struct {
+		result1 error
+	}{result1}
+}
+
+func (fake *FakeFileSystem) ReadFile(filename string) ([]byte, error) {
+	fake.readFileMutex.Lock()
+	fake.readFileArgsForCall = append(fake.readFileArgsForCall, struct {
+		filename string
+	}{filename})
+	fake.readFileMutex.Unlock()
+	if fake.ReadFileStub != nil {
+		return fake.ReadFileStub(filename)
+	} else {
+		return fake.readFileReturns.result1, fake.readFileReturns.result2
+	}
+}
+
+func (fake *FakeFileSystem) ReadFileCallCount() int {
+	fake.readFileMutex.RLock()
+	defer fake.readFileMutex.RUnlock()
+	return len(fake.readFileArgsForCall)
+}
+
+func (fake *FakeFileSystem) ReadFileArgsForCall(i int) string {
+	fake.readFileMutex.RLock()
+	defer fake.readFileMutex.RUnlock()
+	return fake.readFileArgsForCall[i].filename
+}
+
+func (fake *FakeFileSystem) ReadFileReturns(result1 []byte, result2 error) {
+	fake.ReadFileStub = nil
+	fake.readFileReturns = struct {
+		result1 []byte
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *FakeFileSystem) WriteFile(filename string, data []byte, perm os.FileMode) error {
+	fake.writeFileMutex.Lock()
+	fake.writeFileArgsForCall = append(fake.writeFileArgsForCall, struct {
+		filename string
+		data     []byte
+		perm     os.FileMode
+	}{filename, data, perm})
+	fake.writeFileMutex.Unlock()
+	if fake.WriteFileStub != nil {
+		return fake.WriteFileStub(filename, data, perm)
+	} else {
+		return fake.writeFileReturns.result1
+	}
+}
+
+func (fake *FakeFileSystem) WriteFileCallCount() int {
+	fake.writeFileMutex.RLock()
+	defer fake.writeFileMutex.RUnlock()
+	return len(fake.writeFileArgsForCall)
+}
+
+func (fake *FakeFileSystem) WriteFileArgsForCall(i int) (string, []byte, os.FileMode) {
+	fake.writeFileMutex.RLock()
+	defer fake.writeFileMutex.RUnlock()
+	return fake.writeFileArgsForCall[i].filename, fake.writeFileArgsForCall[i].data, fake.writeFileArgsForCall[i].perm
+}
+
+func (fake *FakeFileSystem) WriteFileReturns(result1 error) {
+	fake.WriteFileStub = nil
+	fake.writeFileReturns = struct {
 		result1 error
 	}{result1}
 }
