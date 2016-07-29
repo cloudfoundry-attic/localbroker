@@ -46,11 +46,9 @@ var _ = Describe("Broker", func() {
 			WriteFileWrote = string(data)
 			return nil
 		}
-
 	})
 
 	Context("when recreating", func() {
-
 		It("should be able to bind to previously created service", func() {
 			filecontents, err := json.Marshal(dynamicState{
 				InstanceMap: map[string]brokerapi.ProvisionDetails{
@@ -236,14 +234,14 @@ var _ = Describe("Broker", func() {
 			It("uses the instance id in the default container path", func() {
 				binding, err := broker.Bind("some-instance-id", "binding-id", bindDetails)
 				Expect(err).NotTo(HaveOccurred())
-				Expect(binding.VolumeMounts[0].ContainerPath).To(Equal("/var/vcap/data/some-instance-id"))
+				Expect(binding.VolumeMounts[0].ContainerDir).To(Equal("/var/vcap/data/some-instance-id"))
 			})
 
 			It("flows container path through", func() {
 				bindDetails.Parameters["mount"] = "/var/vcap/otherdir/something"
 				binding, err := broker.Bind("some-instance-id", "binding-id", bindDetails)
 				Expect(err).NotTo(HaveOccurred())
-				Expect(binding.VolumeMounts[0].ContainerPath).To(Equal("/var/vcap/otherdir/something"))
+				Expect(binding.VolumeMounts[0].ContainerDir).To(Equal("/var/vcap/otherdir/something"))
 			})
 
 			It("uses rw as its default mode", func() {
@@ -280,14 +278,14 @@ var _ = Describe("Broker", func() {
 				binding, err := broker.Bind("some-instance-id", "binding-id", bindDetails)
 				Expect(err).NotTo(HaveOccurred())
 
-				Expect(binding.VolumeMounts[0].Private.Driver).To(Equal("localdriver"))
+				Expect(binding.VolumeMounts[0].Driver).To(Equal("localdriver"))
 			})
 
 			It("fills in the group id", func() {
 				binding, err := broker.Bind("some-instance-id", "binding-id", bindDetails)
 				Expect(err).NotTo(HaveOccurred())
 
-				Expect(binding.VolumeMounts[0].Private.GroupId).To(Equal("some-instance-id"))
+				Expect(binding.VolumeMounts[0].Device.VolumeId).To(Equal("some-instance-id"))
 			})
 
 			Context("when the binding already exists", func() {

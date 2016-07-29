@@ -204,11 +204,12 @@ func (b *broker) Bind(instanceID string, bindingID string, details brokerapi.Bin
 	return brokerapi.Binding{
 		Credentials: struct{}{}, // if nil, cloud controller chokes on response
 		VolumeMounts: []brokerapi.VolumeMount{{
-			ContainerPath: evaluateContainerPath(details.Parameters, instanceID),
-			Mode:          mode,
-			Private: brokerapi.VolumeMountPrivate{
-				Driver:  "localdriver",
-				GroupId: instanceID,
+			ContainerDir: evaluateContainerPath(details.Parameters, instanceID),
+			Mode:         mode,
+			Driver:       "localdriver",
+			DeviceType:   "shared",
+			Device: brokerapi.SharedDevice{
+				VolumeId: instanceID,
 			},
 		}},
 	}, nil
