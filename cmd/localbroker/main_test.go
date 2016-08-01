@@ -14,8 +14,6 @@ import (
 	"os"
 	"time"
 
-	"code.cloudfoundry.org/lager"
-	"code.cloudfoundry.org/lager/lagertest"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
@@ -136,12 +134,9 @@ var _ = Describe("Localbroker Main", func() {
 			username, password string
 
 			process    ifrit.Process
-			testLogger lager.Logger
 		)
 
 		BeforeEach(func() {
-			testLogger = lagertest.NewTestLogger("test-broker")
-
 			listenAddr = "0.0.0.0:" + strconv.Itoa(8999+GinkgoParallelNode())
 			username = "admin"
 			password = "password"

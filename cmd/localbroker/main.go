@@ -11,9 +11,9 @@ import (
 	"os"
 
 	"code.cloudfoundry.org/lager"
+	"code.cloudfoundry.org/voldriver/driverhttp"
 	"github.com/cloudfoundry-incubator/localbroker/localbroker"
 	"github.com/cloudfoundry-incubator/localbroker/utils"
-	"github.com/cloudfoundry-incubator/voldriver/driverhttp"
 	"github.com/pivotal-cf/brokerapi"
 	"github.com/tedsuo/ifrit"
 	"github.com/tedsuo/ifrit/grouper"

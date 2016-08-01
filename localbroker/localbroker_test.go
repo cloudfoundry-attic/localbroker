@@ -2,8 +2,8 @@ package localbroker_test
 
 import (
 	"code.cloudfoundry.org/lager/lagertest"
-	"github.com/cloudfoundry-incubator/voldriver"
-	"github.com/cloudfoundry-incubator/voldriver/voldriverfakes"
+	"code.cloudfoundry.org/voldriver"
+	"code.cloudfoundry.org/voldriver/voldriverfakes"
 	"github.com/pivotal-cf/brokerapi"
 
 	"encoding/json"

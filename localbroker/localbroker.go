@@ -17,7 +17,7 @@ import (
 	"os"
 
 	"code.cloudfoundry.org/lager"
-	"github.com/cloudfoundry-incubator/voldriver"
+	"code.cloudfoundry.org/voldriver"
 	"github.com/pivotal-cf/brokerapi"
 )
 
