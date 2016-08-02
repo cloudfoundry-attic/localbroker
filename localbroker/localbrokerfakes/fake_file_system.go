@@ -5,7 +5,7 @@ import (
 	"os"
 	"sync"
 
-	"github.com/cloudfoundry-incubator/localbroker/localbroker"
+	"code.cloudfoundry.org/localbroker/localbroker"
 )
 
 type FakeFileSystem struct {

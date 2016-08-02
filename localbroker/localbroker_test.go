@@ -13,8 +13,8 @@ import (
 	"os"
 
 	"code.cloudfoundry.org/lager"
-	"github.com/cloudfoundry-incubator/localbroker/localbroker"
-	"github.com/cloudfoundry-incubator/localbroker/localbroker/localbrokerfakes"
+	"code.cloudfoundry.org/localbroker/localbroker"
+	"code.cloudfoundry.org/localbroker/localbroker/localbrokerfakes"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
