@@ -18,6 +18,8 @@ import (
 	"github.com/tedsuo/ifrit"
 	"github.com/tedsuo/ifrit/grouper"
 	"github.com/tedsuo/ifrit/http_server"
+	"code.cloudfoundry.org/goshims/os"
+	"code.cloudfoundry.org/goshims/ioutil"
 )
 
 var dataDir = flag.String(
@@ -108,8 +110,7 @@ func parseCommandLine() {
 func createServer(logger lager.Logger) ifrit.Runner {
 	provisioner, err := driverhttp.NewRemoteClient(*localdriverURL, nil)
 	utils.ExitOnFailure(logger, err)
-	fileSystem := localbroker.NewRealFileSystem()
-	serviceBroker := localbroker.New(logger, provisioner, *serviceName, *serviceId, *planName, *planId, *planDesc, *dataDir, &fileSystem)
+	serviceBroker := localbroker.New(logger, provisioner, *serviceName, *serviceId, *planName, *planId, *planDesc, *dataDir, &osshim.OsShim{}, &ioutilshim.IoutilShim{})
 
 	credentials := brokerapi.BrokerCredentials{Username: *username, Password: *password}
 	handler := brokerapi.New(serviceBroker, logger.Session("broker-api"), credentials)

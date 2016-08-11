@@ -18,6 +18,9 @@ import (
 
 	"code.cloudfoundry.org/lager"
 	"code.cloudfoundry.org/voldriver"
+	"code.cloudfoundry.org/goshims/os"
+	"code.cloudfoundry.org/goshims/ioutil"
+
 	"github.com/pivotal-cf/brokerapi"
 )
 
@@ -48,7 +51,8 @@ type broker struct {
 	logger      lager.Logger
 	provisioner voldriver.Provisioner
 	dataDir     string
-	fs          FileSystem
+	os          osshim.Os
+	ioutil      ioutilshim.Ioutil
 	mutex       lock
 
 	static  staticState
@@ -58,14 +62,15 @@ type broker struct {
 func New(
 	logger lager.Logger, provisioner voldriver.Provisioner,
 	serviceName, serviceId, planName, planId, planDesc, dataDir string,
-	fileSystem FileSystem,
+	os osshim.Os, ioutil ioutilshim.Ioutil,
 ) *broker {
 
 	theBroker := broker{
 		logger:      logger,
 		provisioner: provisioner,
 		dataDir:     dataDir,
-		fs:          fileSystem,
+		os:          os,
+		ioutil:      ioutil,
 		mutex:       &sync.Mutex{},
 		static: staticState{
 			ServiceName: serviceName,
@@ -298,7 +303,7 @@ func (b *broker) serialize(state interface{}) {
 		return
 	}
 
-	err = b.fs.WriteFile(stateFile, stateData, os.ModePerm)
+	err = b.ioutil.WriteFile(stateFile, stateData, os.ModePerm)
 	if err != nil {
 		b.logger.Error(fmt.Sprintf("failed-to-write-state-file: %s", stateFile), err)
 		return
@@ -314,7 +319,7 @@ func (b *broker) restoreDynamicState() {
 
 	stateFile := filepath.Join(b.dataDir, fmt.Sprintf("%s-services.json", b.static.ServiceName))
 
-	serviceData, err := b.fs.ReadFile(stateFile)
+	serviceData, err := b.ioutil.ReadFile(stateFile)
 	if err != nil {
 		b.logger.Error(fmt.Sprintf("failed-to-read-state-file: %s", stateFile), err)
 		return

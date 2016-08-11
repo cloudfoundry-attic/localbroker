@@ -14,7 +14,8 @@ import (
 
 	"code.cloudfoundry.org/lager"
 	"code.cloudfoundry.org/localbroker/localbroker"
-	"code.cloudfoundry.org/localbroker/localbroker/localbrokerfakes"
+	"code.cloudfoundry.org/goshims/os/os_fake"
+	"code.cloudfoundry.org/goshims/ioutil/ioutil_fake"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
@@ -28,7 +29,8 @@ var _ = Describe("Broker", func() {
 	var (
 		broker             brokerapi.ServiceBroker
 		fakeProvisioner    *voldriverfakes.FakeProvisioner
-		fakeFs             *localbrokerfakes.FakeFileSystem
+		fakeOs             *os_fake.FakeOs
+		fakeIoutil         *ioutil_fake.FakeIoutil
 		logger             lager.Logger
 		WriteFileCallCount int
 		WriteFileWrote     string
@@ -37,8 +39,9 @@ var _ = Describe("Broker", func() {
 	BeforeEach(func() {
 		logger = lagertest.NewTestLogger("test-broker")
 		fakeProvisioner = &voldriverfakes.FakeProvisioner{}
-		fakeFs = &localbrokerfakes.FakeFileSystem{}
-		fakeFs.WriteFileStub = func(filename string, data []byte, perm os.FileMode) error {
+		fakeOs = &os_fake.FakeOs{}
+		fakeIoutil = &ioutil_fake.FakeIoutil{}
+		fakeIoutil.WriteFileStub = func(filename string, data []byte, perm os.FileMode) error {
 			WriteFileCallCount++
 			WriteFileWrote = string(data)
 			return nil
@@ -61,13 +64,13 @@ var _ = Describe("Broker", func() {
 				BindingMap: map[string]brokerapi.BindDetails{},
 			})
 			Expect(err).NotTo(HaveOccurred())
-			fakeFs.ReadFileReturns(filecontents, nil)
+			fakeIoutil.ReadFileReturns(filecontents, nil)
 
 			broker = localbroker.New(
 				logger, fakeProvisioner,
 				"service-name", "service-id",
 				"plan-name", "plan-id", "plan-desc", "/fake-dir",
-				fakeFs,
+				fakeOs, fakeIoutil,
 			)
 
 			_, err = broker.Bind("service-name", "whatever", brokerapi.BindDetails{AppGUID: "guid", Parameters: map[string]interface{}{}})
@@ -76,13 +79,13 @@ var _ = Describe("Broker", func() {
 
 		It("shouldn't be able to bind to service from invalid state file", func() {
 			filecontents := "{serviceName: [some invalid state]}"
-			fakeFs.ReadFileReturns([]byte(filecontents[:]), nil)
+			fakeIoutil.ReadFileReturns([]byte(filecontents[:]), nil)
 
 			broker = localbroker.New(
 				logger, fakeProvisioner,
 				"service-name", "service-id",
 				"plan-name", "plan-id", "plan-desc", "/fake-dir",
-				fakeFs,
+				fakeOs, fakeIoutil,
 			)
 
 			_, err := broker.Bind("service-name", "whatever", brokerapi.BindDetails{AppGUID: "guid", Parameters: map[string]interface{}{}})
@@ -96,7 +99,7 @@ var _ = Describe("Broker", func() {
 				logger, fakeProvisioner,
 				"service-name", "service-id",
 				"plan-name", "plan-id", "plan-desc", "/fake-dir",
-				fakeFs,
+				fakeOs, fakeIoutil,
 			)
 		})
 
