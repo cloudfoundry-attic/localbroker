@@ -16,11 +16,11 @@ import (
 
 	"os"
 
+	"code.cloudfoundry.org/goshims/os"
 	"code.cloudfoundry.org/lager"
 	"code.cloudfoundry.org/voldriver"
-	"code.cloudfoundry.org/goshims/os"
-	"code.cloudfoundry.org/goshims/ioutil"
 
+	ioutilshim "code.cloudfoundry.org/goshims/ioutil"
 	"github.com/pivotal-cf/brokerapi"
 )
 
@@ -201,6 +201,11 @@ func (b *broker) Bind(instanceID string, bindingID string, details brokerapi.Bin
 
 	b.dynamic.BindingMap[bindingID] = details
 
+	testConfig := map[string]interface{}{
+		"exampleKey":     "some exampleValue",
+		"some other key": "some other value",
+	}
+
 	return brokerapi.Binding{
 		Credentials: struct{}{}, // if nil, cloud controller chokes on response
 		VolumeMounts: []brokerapi.VolumeMount{{
@@ -209,7 +214,8 @@ func (b *broker) Bind(instanceID string, bindingID string, details brokerapi.Bin
 			Driver:       "localdriver",
 			DeviceType:   "shared",
 			Device: brokerapi.SharedDevice{
-				VolumeId: instanceID,
+				VolumeId:    instanceID,
+				MountConfig: testConfig,
 			},
 		}},
 	}, nil
