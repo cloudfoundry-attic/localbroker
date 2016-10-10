@@ -22,6 +22,8 @@ import (
 	"code.cloudfoundry.org/goshims/ioutil"
 
 	"github.com/pivotal-cf/brokerapi"
+	"code.cloudfoundry.org/voldriver/driverhttp"
+	"context"
 )
 
 const (
@@ -127,7 +129,10 @@ func (b *broker) Provision(instanceID string, details brokerapi.ProvisionDetails
 		return brokerapi.ProvisionedServiceSpec{}, brokerapi.ErrInstanceAlreadyExists
 	}
 
-	errResp := b.provisioner.Create(logger, voldriver.CreateRequest{
+	ctx := context.TODO()
+	env := driverhttp.NewHttpDriverEnv(&logger, &ctx)
+
+	errResp := b.provisioner.Create(env, voldriver.CreateRequest{
 		Name: instanceID,
 		Opts: map[string]interface{}{"volume_id": instanceID},
 	})
@@ -157,7 +162,10 @@ func (b *broker) Deprovision(instanceID string, details brokerapi.DeprovisionDet
 		return brokerapi.DeprovisionServiceSpec{}, brokerapi.ErrInstanceDoesNotExist
 	}
 
-	errResp := b.provisioner.Remove(logger, voldriver.RemoveRequest{
+	ctx := context.TODO()
+	env := driverhttp.NewHttpDriverEnv(&logger, &ctx)
+
+	errResp := b.provisioner.Remove(env, voldriver.RemoveRequest{
 		Name: instanceID,
 	})
 
