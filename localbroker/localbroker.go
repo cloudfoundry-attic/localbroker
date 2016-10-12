@@ -130,7 +130,7 @@ func (b *broker) Provision(instanceID string, details brokerapi.ProvisionDetails
 	}
 
 	ctx := context.TODO()
-	env := driverhttp.NewHttpDriverEnv(&logger, &ctx)
+	env := driverhttp.NewHttpDriverEnv(logger, ctx)
 
 	errResp := b.provisioner.Create(env, voldriver.CreateRequest{
 		Name: instanceID,
@@ -163,7 +163,7 @@ func (b *broker) Deprovision(instanceID string, details brokerapi.DeprovisionDet
 	}
 
 	ctx := context.TODO()
-	env := driverhttp.NewHttpDriverEnv(&logger, &ctx)
+	env := driverhttp.NewHttpDriverEnv(logger, ctx)
 
 	errResp := b.provisioner.Remove(env, voldriver.RemoveRequest{
 		Name: instanceID,
