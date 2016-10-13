@@ -1,6 +1,7 @@
 package localbroker
 
 import (
+	"context"
 	"errors"
 	"reflect"
 
@@ -16,13 +17,13 @@ import (
 
 	"os"
 
+	"code.cloudfoundry.org/goshims/ioutil"
+	"code.cloudfoundry.org/goshims/os"
 	"code.cloudfoundry.org/lager"
 	"code.cloudfoundry.org/voldriver"
-	"code.cloudfoundry.org/goshims/os"
-	"code.cloudfoundry.org/goshims/ioutil"
 
-	"github.com/pivotal-cf/brokerapi"
 	"code.cloudfoundry.org/voldriver/driverhttp"
+	"github.com/pivotal-cf/brokerapi"
 )
 
 const (
@@ -113,7 +114,7 @@ func (b *broker) Services() []brokerapi.Service {
 	}}
 }
 
-func (b *broker) Provision(instanceID string, details brokerapi.ProvisionDetails, asyncAllowed bool) (brokerapi.ProvisionedServiceSpec, error) {
+func (b *broker) Provision(instanceID string, details brokerapi.ProvisionDetails, asyncAllowed bool, context context.Context) (brokerapi.ProvisionedServiceSpec, error) {
 	logger := b.logger.Session("provision")
 	logger.Info("start")
 	defer logger.Info("end")
@@ -128,7 +129,7 @@ func (b *broker) Provision(instanceID string, details brokerapi.ProvisionDetails
 		return brokerapi.ProvisionedServiceSpec{}, brokerapi.ErrInstanceAlreadyExists
 	}
 
-	errResp := b.provisioner.Create(driverhttp.NewHttpDriverEnv(logger, details.Context), voldriver.CreateRequest{
+	errResp := b.provisioner.Create(driverhttp.NewHttpDriverEnv(logger, context), voldriver.CreateRequest{
 		Name: instanceID,
 		Opts: map[string]interface{}{"volume_id": instanceID},
 	})
@@ -144,7 +145,7 @@ func (b *broker) Provision(instanceID string, details brokerapi.ProvisionDetails
 	return brokerapi.ProvisionedServiceSpec{}, nil
 }
 
-func (b *broker) Deprovision(instanceID string, details brokerapi.DeprovisionDetails, asyncAllowed bool) (brokerapi.DeprovisionServiceSpec, error) {
+func (b *broker) Deprovision(instanceID string, details brokerapi.DeprovisionDetails, asyncAllowed bool, context context.Context) (brokerapi.DeprovisionServiceSpec, error) {
 	logger := b.logger.Session("deprovision")
 	logger.Info("start")
 	defer logger.Info("end")
@@ -158,7 +159,7 @@ func (b *broker) Deprovision(instanceID string, details brokerapi.DeprovisionDet
 		return brokerapi.DeprovisionServiceSpec{}, brokerapi.ErrInstanceDoesNotExist
 	}
 
-	errResp := b.provisioner.Remove(driverhttp.NewHttpDriverEnv(logger, details.Context), voldriver.RemoveRequest{
+	errResp := b.provisioner.Remove(driverhttp.NewHttpDriverEnv(logger, context), voldriver.RemoveRequest{
 		Name: instanceID,
 	})
 
@@ -173,7 +174,7 @@ func (b *broker) Deprovision(instanceID string, details brokerapi.DeprovisionDet
 	return brokerapi.DeprovisionServiceSpec{}, nil
 }
 
-func (b *broker) Bind(instanceID string, bindingID string, details brokerapi.BindDetails) (brokerapi.Binding, error) {
+func (b *broker) Bind(instanceID string, bindingID string, details brokerapi.BindDetails, _ context.Context) (brokerapi.Binding, error) {
 	logger := b.logger.Session("bind")
 	logger.Info("start")
 	defer logger.Info("end")
@@ -216,7 +217,7 @@ func (b *broker) Bind(instanceID string, bindingID string, details brokerapi.Bin
 	}, nil
 }
 
-func (b *broker) Unbind(instanceID string, bindingID string, details brokerapi.UnbindDetails) error {
+func (b *broker) Unbind(instanceID string, bindingID string, details brokerapi.UnbindDetails, _ context.Context) error {
 	logger := b.logger.Session("unbind")
 	logger.Info("start")
 	defer logger.Info("end")
@@ -239,7 +240,7 @@ func (b *broker) Unbind(instanceID string, bindingID string, details brokerapi.U
 	return nil
 }
 
-func (b *broker) Update(instanceID string, details brokerapi.UpdateDetails, asyncAllowed bool) (brokerapi.UpdateServiceSpec, error) {
+func (b *broker) Update(instanceID string, details brokerapi.UpdateDetails, asyncAllowed bool, _ context.Context) (brokerapi.UpdateServiceSpec, error) {
 	panic("not implemented")
 }
 
