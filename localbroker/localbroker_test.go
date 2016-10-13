@@ -136,7 +136,7 @@ var _ = Describe("Broker", func() {
 				_, err := broker.Provision("some-instance-id", brokerapi.ProvisionDetails{}, false)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(WriteFileCallCount).To(Equal(1))
-				Expect(WriteFileWrote).To(Equal("{\"InstanceMap\":{\"some-instance-id\":{\"service_id\":\"\",\"plan_id\":\"\",\"organization_guid\":\"\",\"space_guid\":\"\"}},\"BindingMap\":{}}"))
+				Expect(WriteFileWrote).To(Equal("{\"InstanceMap\":{\"some-instance-id\":{\"service_id\":\"\",\"plan_id\":\"\",\"organization_guid\":\"\",\"space_guid\":\"\",\"Context\":null}},\"BindingMap\":{}}"))
 			})
 
 			Context("when provisioning errors", func() {
@@ -265,7 +265,7 @@ var _ = Describe("Broker", func() {
 				Expect(err).NotTo(HaveOccurred())
 
 				Expect(WriteFileCallCount).To(Equal(1))
-				Expect(WriteFileWrote).To(Equal("{\"InstanceMap\":{\"some-instance-id\":{\"service_id\":\"\",\"plan_id\":\"\",\"organization_guid\":\"\",\"space_guid\":\"\"}},\"BindingMap\":{\"binding-id\":{\"app_guid\":\"guid\",\"plan_id\":\"\",\"service_id\":\"\"}}}"))
+				Expect(WriteFileWrote).To(Equal("{\"InstanceMap\":{\"some-instance-id\":{\"service_id\":\"\",\"plan_id\":\"\",\"organization_guid\":\"\",\"space_guid\":\"\",\"Context\":null}},\"BindingMap\":{\"binding-id\":{\"app_guid\":\"guid\",\"plan_id\":\"\",\"service_id\":\"\",\"Context\":null}}}"))
 			})
 
 			It("errors if mode is not a boolean", func() {
@@ -346,7 +346,7 @@ var _ = Describe("Broker", func() {
 				Expect(err).NotTo(HaveOccurred())
 
 				Expect(WriteFileCallCount).To(Equal(1))
-				Expect(WriteFileWrote).To(Equal("{\"InstanceMap\":{\"some-instance-id\":{\"service_id\":\"\",\"plan_id\":\"\",\"organization_guid\":\"\",\"space_guid\":\"\"}},\"BindingMap\":{}}"))
+				Expect(WriteFileWrote).To(Equal("{\"InstanceMap\":{\"some-instance-id\":{\"service_id\":\"\",\"plan_id\":\"\",\"organization_guid\":\"\",\"space_guid\":\"\",\"Context\":null}},\"BindingMap\":{}}"))
 			})
 
 		})
