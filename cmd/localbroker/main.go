@@ -110,10 +110,10 @@ func parseCommandLine() {
 func createServer(logger lager.Logger) ifrit.Runner {
 	provisioner, err := driverhttp.NewRemoteClient(*localdriverURL, nil)
 	utils.ExitOnFailure(logger, err)
-	serviceBrokerWithContext := localbroker.New(logger, provisioner, *serviceName, *serviceId, *planName, *planId, *planDesc, *dataDir, &osshim.OsShim{}, &ioutilshim.IoutilShim{})
+	serviceBroker := localbroker.New(logger, provisioner, *serviceName, *serviceId, *planName, *planId, *planDesc, *dataDir, &osshim.OsShim{}, &ioutilshim.IoutilShim{})
 
 	credentials := brokerapi.BrokerCredentials{Username: *username, Password: *password}
-	handler := brokerapi.NewWithContext(serviceBrokerWithContext, logger.Session("broker-api"), credentials)
+	handler := brokerapi.New(serviceBroker, logger.Session("broker-api"), credentials)
 
 	return http_server.New(*atAddress, handler)
 }
