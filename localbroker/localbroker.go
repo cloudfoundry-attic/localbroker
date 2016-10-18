@@ -17,11 +17,11 @@ import (
 
 	"os"
 
-	"code.cloudfoundry.org/goshims/ioutil"
-	"code.cloudfoundry.org/goshims/os"
 	"code.cloudfoundry.org/lager"
 	"code.cloudfoundry.org/voldriver"
 
+	"code.cloudfoundry.org/goshims/ioutilshim"
+	"code.cloudfoundry.org/goshims/osshim"
 	"code.cloudfoundry.org/voldriver/driverhttp"
 	"github.com/pivotal-cf/brokerapi"
 )

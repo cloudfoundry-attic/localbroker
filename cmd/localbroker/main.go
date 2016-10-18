@@ -18,8 +18,8 @@ import (
 	"github.com/tedsuo/ifrit"
 	"github.com/tedsuo/ifrit/grouper"
 	"github.com/tedsuo/ifrit/http_server"
-	"code.cloudfoundry.org/goshims/os"
-	"code.cloudfoundry.org/goshims/ioutil"
+	"code.cloudfoundry.org/goshims/ioutilshim"
+	"code.cloudfoundry.org/goshims/osshim"
 )
 
 var dataDir = flag.String(

@@ -14,11 +14,11 @@ import (
 
 	"code.cloudfoundry.org/lager"
 	"code.cloudfoundry.org/localbroker/localbroker"
-	"code.cloudfoundry.org/goshims/os/os_fake"
-	"code.cloudfoundry.org/goshims/ioutil/ioutil_fake"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"context"
+	"code.cloudfoundry.org/goshims/osshim/os_fake"
+	"code.cloudfoundry.org/goshims/ioutilshim/ioutil_fake"
 )
 
 type dynamicState struct {
