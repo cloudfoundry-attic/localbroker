@@ -308,7 +308,7 @@ func (b *broker) serialize(state interface{}) {
 
 	err = b.ioutil.WriteFile(stateFile, stateData, os.ModePerm)
 	if err != nil {
-		b.logger.Error(fmt.Sprintf("failed-to-write-state-file: %s", stateFile), err)
+		b.logger.Error("failed-to-write-state-file", err, lager.Data{"stateFile": stateFile})
 		return
 	}
 
@@ -324,14 +324,14 @@ func (b *broker) restoreDynamicState() {
 
 	serviceData, err := b.ioutil.ReadFile(stateFile)
 	if err != nil {
-		b.logger.Error(fmt.Sprintf("failed-to-read-state-file: %s", stateFile), err)
+		b.logger.Error("failed-to-read-state-file", err, lager.Data{"stateFile": stateFile})
 		return
 	}
 
 	dynamicState := dynamicState{}
 	err = json.Unmarshal(serviceData, &dynamicState)
 	if err != nil {
-		b.logger.Error(fmt.Sprintf("failed-to-unmarshall-state from state-file: %s", stateFile), err)
+		b.logger.Error("failed-to-unmarshall-state", err, lager.Data{"stateFile": stateFile})
 		return
 	}
 	logger.Info("state-restored", lager.Data{"state-file": stateFile})
