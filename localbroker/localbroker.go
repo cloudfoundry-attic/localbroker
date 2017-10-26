@@ -2,7 +2,6 @@ package localbroker
 
 import (
 	"context"
-	"errors"
 	"reflect"
 
 	"path"
@@ -18,11 +17,8 @@ import (
 	"os"
 
 	"code.cloudfoundry.org/lager"
-	"code.cloudfoundry.org/voldriver"
-
 	"code.cloudfoundry.org/goshims/ioutilshim"
 	"code.cloudfoundry.org/goshims/osshim"
-	"code.cloudfoundry.org/voldriver/driverhttp"
 	"github.com/pivotal-cf/brokerapi"
 )
 
@@ -51,7 +47,6 @@ type lock interface {
 
 type broker struct {
 	logger      lager.Logger
-	provisioner voldriver.Provisioner
 	dataDir     string
 	os          osshim.Os
 	ioutil      ioutilshim.Ioutil
@@ -62,14 +57,13 @@ type broker struct {
 }
 
 func New(
-	logger lager.Logger, provisioner voldriver.Provisioner,
+	logger lager.Logger,
 	serviceName, serviceId, planName, planId, planDesc, dataDir string,
 	os osshim.Os, ioutil ioutilshim.Ioutil,
 ) *broker {
 
 	theBroker := broker{
 		logger:      logger,
-		provisioner: provisioner,
 		dataDir:     dataDir,
 		os:          os,
 		ioutil:      ioutil,
@@ -129,17 +123,6 @@ func (b *broker) Provision(context context.Context, instanceID string, details b
 		return brokerapi.ProvisionedServiceSpec{}, brokerapi.ErrInstanceAlreadyExists
 	}
 
-	errResp := b.provisioner.Create(driverhttp.NewHttpDriverEnv(logger, context), voldriver.CreateRequest{
-		Name: instanceID,
-		Opts: map[string]interface{}{"volume_id": instanceID},
-	})
-
-	if errResp.Err != "" {
-		err := errors.New(errResp.Err)
-		logger.Error("provisioner-create-failed", err)
-		return brokerapi.ProvisionedServiceSpec{}, err
-	}
-
 	b.dynamic.InstanceMap[instanceID] = details
 
 	return brokerapi.ProvisionedServiceSpec{}, nil
@@ -157,16 +140,6 @@ func (b *broker) Deprovision(context context.Context, instanceID string, details
 
 	if _, ok := b.dynamic.InstanceMap[instanceID]; !ok {
 		return brokerapi.DeprovisionServiceSpec{}, brokerapi.ErrInstanceDoesNotExist
-	}
-
-	errResp := b.provisioner.Remove(driverhttp.NewHttpDriverEnv(logger, context), voldriver.RemoveRequest{
-		Name: instanceID,
-	})
-
-	if errResp.Err != "" {
-		err := errors.New(errResp.Err)
-		logger.Error("provisioner-remove-failed", err)
-		return brokerapi.DeprovisionServiceSpec{}, err
 	}
 
 	delete(b.dynamic.InstanceMap, instanceID)

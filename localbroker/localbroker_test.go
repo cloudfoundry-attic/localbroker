@@ -2,8 +2,6 @@ package localbroker_test
 
 import (
 	"code.cloudfoundry.org/lager/lagertest"
-	"code.cloudfoundry.org/voldriver"
-	"code.cloudfoundry.org/voldriver/voldriverfakes"
 	"github.com/pivotal-cf/brokerapi"
 
 	"encoding/json"
@@ -29,7 +27,6 @@ type dynamicState struct {
 var _ = Describe("Broker", func() {
 	var (
 		broker             brokerapi.ServiceBroker
-		fakeProvisioner    *voldriverfakes.FakeProvisioner
 		fakeOs             *os_fake.FakeOs
 		fakeIoutil         *ioutil_fake.FakeIoutil
 		logger             lager.Logger
@@ -40,8 +37,6 @@ var _ = Describe("Broker", func() {
 
 	BeforeEach(func() {
 		logger = lagertest.NewTestLogger("test-broker")
-		ctx = context.TODO()
-		fakeProvisioner = &voldriverfakes.FakeProvisioner{}
 		fakeOs = &os_fake.FakeOs{}
 		fakeIoutil = &ioutil_fake.FakeIoutil{}
 		fakeIoutil.WriteFileStub = func(filename string, data []byte, perm os.FileMode) error {
@@ -68,7 +63,7 @@ var _ = Describe("Broker", func() {
 			fakeIoutil.ReadFileReturns(filecontents, nil)
 
 			broker = localbroker.New(
-				logger, fakeProvisioner,
+				logger,
 				"service-name", "service-id",
 				"plan-name", "plan-id", "plan-desc", "/fake-dir",
 				fakeOs, fakeIoutil,
@@ -83,7 +78,7 @@ var _ = Describe("Broker", func() {
 			fakeIoutil.ReadFileReturns([]byte(filecontents[:]), nil)
 
 			broker = localbroker.New(
-				logger, fakeProvisioner,
+				logger,
 				"service-name", "service-id",
 				"plan-name", "plan-id", "plan-desc", "/fake-dir",
 				fakeOs, fakeIoutil,
@@ -97,7 +92,7 @@ var _ = Describe("Broker", func() {
 	Context("when creating first time", func() {
 		BeforeEach(func() {
 			broker = localbroker.New(
-				logger, fakeProvisioner,
+				logger,
 				"service-name", "service-id",
 				"plan-name", "plan-id", "plan-desc", "/fake-dir",
 				fakeOs, fakeIoutil,
@@ -122,17 +117,6 @@ var _ = Describe("Broker", func() {
 		})
 
 		Context(".Provision", func() {
-			It("should provision the service instance", func() {
-				_, err := broker.Provision(ctx, "some-instance-id", brokerapi.ProvisionDetails{}, false)
-				Expect(err).NotTo(HaveOccurred())
-				Expect(fakeProvisioner.CreateCallCount()).To(Equal(1))
-
-				_, details := fakeProvisioner.CreateArgsForCall(0)
-				Expect(err).NotTo(HaveOccurred())
-				Expect(details.Name).To(Equal("some-instance-id"))
-				Expect(details.Opts["volume_id"]).To(Equal("some-instance-id"))
-			})
-
 			It("should write state", func() {
 				WriteFileCallCount = 0
 				WriteFileWrote = ""
@@ -140,17 +124,6 @@ var _ = Describe("Broker", func() {
 				Expect(err).NotTo(HaveOccurred())
 				Expect(WriteFileCallCount).To(Equal(1))
 				Expect(WriteFileWrote).To(Equal("{\"InstanceMap\":{\"some-instance-id\":{\"service_id\":\"\",\"plan_id\":\"\",\"organization_guid\":\"\",\"space_guid\":\"\"}},\"BindingMap\":{}}"))
-			})
-
-			Context("when provisioning errors", func() {
-				BeforeEach(func() {
-					fakeProvisioner.CreateReturns(voldriver.ErrorResponse{Err: "some-error"})
-				})
-
-				It("errors", func() {
-					_, err := broker.Provision(ctx, "some-instance-id", brokerapi.ProvisionDetails{}, false)
-					Expect(err).To(HaveOccurred())
-				})
 			})
 
 			Context("when the service instance already exists with different details", func() {
@@ -183,7 +156,6 @@ var _ = Describe("Broker", func() {
 			It("should deprovision the service", func() {
 				_, err := broker.Deprovision(ctx, "some-instance-id", brokerapi.DeprovisionDetails{}, false)
 				Expect(err).NotTo(HaveOccurred())
-				Expect(fakeProvisioner.RemoveCallCount()).To(Equal(1))
 
 				By("checking that we can reprovision a slightly different service")
 				_, err = broker.Provision(ctx, "some-instance-id", brokerapi.ProvisionDetails{ServiceID: "different-service-id"}, false)
@@ -203,17 +175,6 @@ var _ = Describe("Broker", func() {
 
 				Expect(WriteFileCallCount).To(Equal(1))
 				Expect(WriteFileWrote).To(Equal("{\"InstanceMap\":{},\"BindingMap\":{}}"))
-			})
-
-			Context("when the provisioner fails to remove", func() {
-				BeforeEach(func() {
-					fakeProvisioner.RemoveReturns(voldriver.ErrorResponse{Err: "some-error"})
-				})
-
-				It("should error", func() {
-					_, err := broker.Deprovision(ctx, "some-instance-id", brokerapi.DeprovisionDetails{}, false)
-					Expect(err).To(HaveOccurred())
-				})
 			})
 		})
 

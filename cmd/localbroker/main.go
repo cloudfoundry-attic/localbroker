@@ -10,16 +10,15 @@ import (
 
 	"os"
 
+	"code.cloudfoundry.org/goshims/ioutilshim"
+	"code.cloudfoundry.org/goshims/osshim"
 	"code.cloudfoundry.org/lager"
-	"code.cloudfoundry.org/voldriver/driverhttp"
 	"code.cloudfoundry.org/localbroker/localbroker"
 	"code.cloudfoundry.org/localbroker/utils"
 	"github.com/pivotal-cf/brokerapi"
 	"github.com/tedsuo/ifrit"
 	"github.com/tedsuo/ifrit/grouper"
 	"github.com/tedsuo/ifrit/http_server"
-	"code.cloudfoundry.org/goshims/ioutilshim"
-	"code.cloudfoundry.org/goshims/osshim"
 )
 
 var dataDir = flag.String(
@@ -68,11 +67,6 @@ var password = flag.String(
 	"admin",
 	"basic auth password to verify on incoming requests",
 )
-var localdriverURL = flag.String(
-	"localdriverURL",
-	"http://127.0.0.1:8089",
-	"address of the companion localdriver service",
-)
 
 func main() {
 	parseCommandLine()
@@ -108,9 +102,7 @@ func parseCommandLine() {
 }
 
 func createServer(logger lager.Logger) ifrit.Runner {
-	provisioner, err := driverhttp.NewRemoteClient(*localdriverURL, nil)
-	utils.ExitOnFailure(logger, err)
-	serviceBroker := localbroker.New(logger, provisioner, *serviceName, *serviceId, *planName, *planId, *planDesc, *dataDir, &osshim.OsShim{}, &ioutilshim.IoutilShim{})
+	serviceBroker := localbroker.New(logger, *serviceName, *serviceId, *planName, *planId, *planDesc, *dataDir, &osshim.OsShim{}, &ioutilshim.IoutilShim{})
 
 	credentials := brokerapi.BrokerCredentials{Username: *username, Password: *password}
 	handler := brokerapi.New(serviceBroker, logger.Session("broker-api"), credentials)
