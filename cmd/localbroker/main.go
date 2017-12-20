@@ -3,7 +3,7 @@ package main
 import (
 	"flag"
 
-	"code.cloudfoundry.org/cflager"
+	"code.cloudfoundry.org/lager/lagerflags"
 	"code.cloudfoundry.org/debugserver"
 
 	"fmt"
@@ -77,7 +77,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	logger, logSink := cflager.New("localbroker")
+	logger, logSink := lagerflags.New("localbroker")
 	logger.Info("starting")
 	defer logger.Info("ends")
 
@@ -96,7 +96,7 @@ func main() {
 }
 
 func parseCommandLine() {
-	cflager.AddFlags(flag.CommandLine)
+	lagerflags.AddFlags(flag.CommandLine)
 	debugserver.AddFlags(flag.CommandLine)
 	flag.Parse()
 }
