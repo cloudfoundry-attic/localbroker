@@ -2,17 +2,14 @@ package main
 
 import (
 	"flag"
-
-	"code.cloudfoundry.org/lager/lagerflags"
-	"code.cloudfoundry.org/debugserver"
-
 	"fmt"
-
 	"os"
 
+	"code.cloudfoundry.org/debugserver"
 	"code.cloudfoundry.org/goshims/ioutilshim"
 	"code.cloudfoundry.org/goshims/osshim"
 	"code.cloudfoundry.org/lager"
+	"code.cloudfoundry.org/lager/lagerflags"
 	"code.cloudfoundry.org/localbroker/localbroker"
 	"code.cloudfoundry.org/localbroker/utils"
 	"github.com/pivotal-cf/brokerapi"
@@ -77,7 +74,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	logger, logSink := lagerflags.New("localbroker")
+	logger, logSink := lagerflags.NewFromConfig("localbroker", lagerflags.ConfigFromFlags())
 	logger.Info("starting")
 	defer logger.Info("ends")
 
