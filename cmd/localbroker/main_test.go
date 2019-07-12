@@ -113,16 +113,31 @@ func (r failRunner) Run(sigChan <-chan os.Signal, ready chan<- struct{}) error {
 }
 
 var _ = Describe("Localbroker Main", func() {
+	var process ifrit.Process
+	var volmanRunner *ginkgomon.Runner
+
+	JustBeforeEach(func() {
+		process = ifrit.Invoke(volmanRunner)
+	})
+
+	AfterEach(func() {
+		ginkgomon.Kill(process)
+	})
+
 	Context("Missing required args", func() {
-		It("shows usage", func() {
+		BeforeEach(func() {
 			var args []string
-			volmanRunner := failRunner{
+			volmanRunner = ginkgomon.New(ginkgomon.Config{
 				Name:       "localbroker",
 				Command:    exec.Command(binaryPath, args...),
 				StartCheck: "ERROR: Required parameter dataDir not defined.",
-			}
-			process := ifrit.Invoke(volmanRunner)
-			ginkgomon.Kill(process) // this is only if incorrect implementation leaves process running
+			})
+
+		})
+
+		It("shows usage", func() {
+			var err error
+			Eventually(process.Wait(), 1 * time.Minute).Should(Receive(&err))
 		})
 	})
 
@@ -132,8 +147,6 @@ var _ = Describe("Localbroker Main", func() {
 			listenAddr         string
 			tempDir            string
 			username, password string
-
-			process ifrit.Process
 		)
 
 		BeforeEach(func() {
@@ -147,19 +160,11 @@ var _ = Describe("Localbroker Main", func() {
 			args = append(args, "-password", password)
 			args = append(args, "-dataDir", tempDir)
 
-		})
-
-		JustBeforeEach(func() {
-			volmanRunner := ginkgomon.New(ginkgomon.Config{
+			volmanRunner = ginkgomon.New(ginkgomon.Config{
 				Name:       "localbroker",
 				Command:    exec.Command(binaryPath, args...),
 				StartCheck: "started",
 			})
-			process = ginkgomon.Invoke(volmanRunner)
-		})
-
-		AfterEach(func() {
-			ginkgomon.Kill(process)
 		})
 
 		httpDoWithAuth := func(method, endpoint string, body io.ReadCloser) (*http.Response, error) {
@@ -184,6 +189,12 @@ var _ = Describe("Localbroker Main", func() {
 				args = append(args, "-planName", "some name")
 				args = append(args, "-planId", "some other guid")
 				args = append(args, "-planDesc", "a description")
+
+				volmanRunner = ginkgomon.New(ginkgomon.Config{
+					Name:       "localbroker",
+					Command:    exec.Command(binaryPath, args...),
+					StartCheck: "started",
+				})
 			})
 
 			It("should pass arguments though to catalog", func() {
